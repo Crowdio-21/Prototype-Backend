@@ -1,6 +1,6 @@
 # Worker FastAPI Package
 
-The `worker_fastapi` package implements the worker nodes that execute distributed computing tasks for the CrowdCompute system.
+The `worker` package implements the worker nodes that execute distributed computing tasks for the CrowdCompute system.
 
 ## Overview
 
@@ -47,10 +47,10 @@ HTML dashboard for worker monitoring and control.
 
 ```python
 # Using the provided script
-python test_utils/run_worker_simple.py
+python tests/run_worker_simple.py
 
 # Or programmatically
-from worker_fastapi.worker import FastAPIWorker, WorkerConfig
+from worker.worker import FastAPIWorker, WorkerConfig
 import asyncio
 
 async def start_worker():
@@ -71,7 +71,7 @@ asyncio.run(start_worker())
 ### Worker Configuration
 
 ```python
-from worker_fastapi.worker import WorkerConfig
+from worker.worker import WorkerConfig
 
 config = WorkerConfig(
     worker_id="unique-worker-id",      # Unique identifier
@@ -240,16 +240,16 @@ result_message = {
 ### Local Development
 ```bash
 # Start worker locally
-python test_utils/run_worker_simple.py
+python tests/run_worker_simple.py
 ```
 
 ### Production Deployment
 ```bash
 # Using uvicorn
-uvicorn worker_fastapi.worker:app --host 0.0.0.0 --port 8001
+uvicorn worker.worker:app --host 0.0.0.0 --port 8001
 
 # Using gunicorn
-gunicorn worker_fastapi.worker:app -w 1 -k uvicorn.workers.UvicornWorker
+gunicorn worker.worker:app -w 1 -k uvicorn.workers.UvicornWorker
 ```
 
 ### Docker Deployment
@@ -258,5 +258,5 @@ FROM python:3.9-slim
 COPY . /app
 WORKDIR /app
 RUN pip install -r requirements.txt
-CMD ["python", "test_utils/run_worker_simple.py"]
+CMD ["python", "tests/run_worker_simple.py"]
 ```

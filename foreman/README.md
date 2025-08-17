@@ -1,6 +1,6 @@
 # Foreman FastAPI Package
 
-The `foreman_fastapi` package implements the central task manager and job scheduler for the CrowdCompute distributed computing system.
+The `foreman` package implements the central task manager and job scheduler for the CrowdCompute distributed computing system.
 
 ## Overview
 
@@ -70,10 +70,10 @@ WebSocket connection manager handling client and worker communications.
 
 ```python
 # Using the provided script
-python test_utils/run_foreman_simple.py
+python tests/run_foreman_simple.py
 
 # Or directly with uvicorn
-uvicorn foreman_fastapi.main:app --host 0.0.0.0 --port 8000
+uvicorn foreman.main:app --host 0.0.0.0 --port 8000
 ```
 
 ### API Usage

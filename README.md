@@ -41,13 +41,13 @@ Shared modules for communication protocol and serialization utilities.
 ### [`client/`](client/README.md)
 Python SDK for submitting distributed computing jobs.
 
-### [`foreman_fastapi/`](foreman_fastapi/README.md)
+### [`foreman/`](foreman/README.md)
 FastAPI-based central server for job management and task distribution.
 
-### [`worker_fastapi/`](worker_fastapi/README.md)
+### [`worker/`](worker/README.md)
 FastAPI-based worker nodes for executing distributed tasks.
 
-### [`test_utils/`](test_utils/README.md)
+### [`tests/`](tests/README.md)
 Utility scripts for testing and running the system.
 
 ## 🚀 Quick Start
@@ -61,7 +61,7 @@ pip install -r requirements.txt
 ### 2. Start the Foreman
 
 ```bash
-cd test_utils
+cd tests
 python run_foreman_simple.py
 ```
 
@@ -75,7 +75,7 @@ The foreman will start on:
 In another terminal:
 
 ```bash
-cd test_utils
+cd tests
 python run_worker_simple.py
 ```
 
@@ -88,7 +88,7 @@ The worker will start on:
 In a third terminal:
 
 ```bash
-cd test_utils
+cd tests
 python example_client.py localhost
 ```
 
@@ -252,16 +252,16 @@ cc_MVP/
 │   ├── client.py             # Main client implementation
 │   ├── __init__.py           # SDK exports
 │   └── README.md
-├── foreman_fastapi/          # Foreman server
+├── foreman/          # Foreman server
 │   ├── main.py              # FastAPI application
 │   ├── database.py          # Database models
 │   ├── websocket_manager.py # WebSocket handling
 │   └── README.md
-├── worker_fastapi/           # Worker implementation
+├── worker/           # Worker implementation
 │   ├── worker.py            # Worker logic
 │   ├── dashboard.py         # Worker dashboard
 │   └── README.md
-├── test_utils/              # Testing utilities
+├── tests/              # Testing utilities
 │   ├── run_foreman_simple.py
 │   ├── run_worker_simple.py
 │   ├── example_client.py
@@ -274,8 +274,7 @@ cc_MVP/
 
 ```bash
 # Test imports
-cd test_utils
-python test_imports.py
+cd tests 
 
 # Test the full system
 python run_foreman_simple.py  # Terminal 1
@@ -287,7 +286,7 @@ python example_client.py localhost  # Terminal 3
 
 ```bash
 # View database contents
-cd test_utils
+cd tests
 python view_database.py
 
 # Clear database
@@ -345,7 +344,7 @@ COPY . /app
 WORKDIR /app
 RUN pip install -r requirements.txt
 EXPOSE 8000 9000
-CMD ["python", "test_utils/run_foreman_simple.py"]
+CMD ["python", "tests/run_foreman_simple.py"]
 ```
 
 ## 🤝 Contributing

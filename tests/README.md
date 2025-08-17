@@ -1,4 +1,4 @@
-# Test Utils
+# Tests
 
 This folder contains utility scripts for testing and running the CrowdCompute system.
 
@@ -37,7 +37,7 @@ python quick_clear_db.py
 
 ## Usage
 
-All scripts in this folder can be run directly from the `test_utils` directory. They automatically add the parent directory to the Python path to resolve imports.
+All scripts in this folder can be run directly from the `tests` directory. They automatically add the parent directory to the Python path to resolve imports.
 
 ## Typical Testing Workflow
 
