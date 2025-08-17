@@ -125,6 +125,7 @@ class JobStats(BaseModel):
     total_tasks: int
     completed_tasks: int
     failed_tasks: int
+    online_workers: int
 
 
 # Database functions
@@ -239,6 +240,43 @@ async def update_worker_status(session: AsyncSession, worker_id: str, status: st
     await session.commit()
 
 
+async def update_worker_task_stats(session: AsyncSession, worker_id: str, task_completed: bool = True):
+    """Update worker task completion statistics"""
+    if task_completed:
+        # Increment completed tasks
+        stmt = update(WorkerModel).where(WorkerModel.id == worker_id).values(
+            total_tasks_completed=WorkerModel.total_tasks_completed + 1
+        )
+    else:
+        # Increment failed tasks
+        stmt = update(WorkerModel).where(WorkerModel.id == worker_id).values(
+            total_tasks_failed=WorkerModel.total_tasks_failed + 1
+        )
+    
+    await session.execute(stmt)
+    await session.commit()
+
+
+async def increment_job_completed_tasks(session: AsyncSession, job_id: str):
+    """Increment the completed_tasks count for a job"""
+    stmt = update(JobModel).where(JobModel.id == job_id).values(
+        completed_tasks=JobModel.completed_tasks + 1
+    )
+    await session.execute(stmt)
+    await session.commit()
+
+
+
+
+
+async def get_online_workers_count(session: AsyncSession) -> int:
+    """Get count of online workers"""
+    result = await session.execute(
+        select(func.count(WorkerModel.id)).where(WorkerModel.status == "online")
+    )
+    return result.scalar() or 0
+
+
 async def get_job_stats(session: AsyncSession) -> JobStats:
     """Get job statistics"""
     # Get all jobs and count by status
@@ -258,6 +296,9 @@ async def get_job_stats(session: AsyncSession) -> JobStats:
     completed_tasks = len([t for t in tasks if t.status == 'completed'])
     failed_tasks = len([t for t in tasks if t.status == 'failed'])
     
+    # Get online workers count
+    online_workers = await get_online_workers_count(session)
+    
     return JobStats(
         total_jobs=total_jobs,
         pending_jobs=pending_jobs,
@@ -266,7 +307,8 @@ async def get_job_stats(session: AsyncSession) -> JobStats:
         failed_jobs=failed_jobs,
         total_tasks=total_tasks,
         completed_tasks=completed_tasks,
-        failed_tasks=failed_tasks
+        failed_tasks=failed_tasks,
+        online_workers=online_workers
     )
 
 

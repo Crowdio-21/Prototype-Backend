@@ -172,6 +172,12 @@ class WebSocketManager:
             result=str(result)
         )
         
+        # Update worker statistics
+        await self._update_worker_task_stats(worker_id, task_completed=True)
+        
+        # Increment job completed tasks count
+        await self._increment_job_completed_tasks(job_id)
+        
         # Mark worker as available
         self.available_workers.add(worker_id)
         await self._update_worker_status(worker_id, "online", current_task_id=None)
@@ -204,6 +210,13 @@ class WebSocketManager:
             worker_id=worker_id, 
             error=error
         )
+        
+        # Update worker statistics
+        if worker_id:
+            await self._update_worker_task_stats(worker_id, task_completed=False)
+        
+        # Increment job completed tasks count (includes failed tasks)
+        await self._increment_job_completed_tasks(job_id)
         
         # Mark worker as available
         if worker_id:
@@ -332,8 +345,8 @@ class WebSocketManager:
                     message = create_job_results_message(results, job_id)
                     await client_websocket.send(message.to_json())
                     
-                    # Update job status
-                    await update_job_status(session, job_id, "completed")
+                    # Update job status with completed tasks count
+                    await update_job_status(session, job_id, "completed", completed_tasks=len(completed_tasks))
                     
                     # Clean up job cache
                     if job_id in self.job_cache:
@@ -365,7 +378,7 @@ class WebSocketManager:
     
     async def _create_worker_in_database(self, worker_id: str):
         """Create worker in database if it doesn't exist"""
-        from .database import create_worker, get_workers, AsyncSessionLocal
+        from .database import create_worker, get_workers, update_worker_status, AsyncSessionLocal
         
         # Create a new session for this operation
         async with AsyncSessionLocal() as session:
@@ -377,7 +390,9 @@ class WebSocketManager:
                 await create_worker(session, worker_id)
                 print(f"Created worker {worker_id} in database")
             else:
-                print(f"Worker {worker_id} already exists in database")
+                # Worker exists, ensure it's marked as online
+                await update_worker_status(session, worker_id, "online")
+                print(f"Worker {worker_id} already exists in database, marked as online")
     
     async def _create_tasks_for_job(self, job_id: str, args_list: list):
         """Create tasks in database for a job"""
@@ -423,6 +438,20 @@ class WebSocketManager:
         
         async with AsyncSessionLocal() as session:
             await update_worker_status(session, worker_id, status, current_task_id)
+    
+    async def _update_worker_task_stats(self, worker_id: str, task_completed: bool = True):
+        """Update worker task statistics with new session"""
+        from .database import update_worker_task_stats, AsyncSessionLocal
+        
+        async with AsyncSessionLocal() as session:
+            await update_worker_task_stats(session, worker_id, task_completed)
+    
+    async def _increment_job_completed_tasks(self, job_id: str):
+        """Increment job completed tasks count with new session"""
+        from .database import increment_job_completed_tasks, AsyncSessionLocal
+        
+        async with AsyncSessionLocal() as session:
+            await increment_job_completed_tasks(session, job_id)
     
     async def _cleanup_connection(self, websocket: WebSocketServerProtocol):
         """Clean up when a connection is closed"""

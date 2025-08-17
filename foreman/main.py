@@ -175,7 +175,7 @@ dashboard_html = """
                 document.getElementById('total-jobs').textContent = stats.total_jobs;
                 document.getElementById('running-jobs').textContent = stats.running_jobs;
                 document.getElementById('completed-jobs').textContent = stats.completed_jobs;
-                document.getElementById('online-workers').textContent = stats.total_workers || 0;
+                document.getElementById('online-workers').textContent = stats.online_workers || 0;
             } catch (error) {
                 console.error('Error loading stats:', error);
             }
