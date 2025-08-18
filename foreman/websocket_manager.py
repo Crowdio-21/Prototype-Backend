@@ -14,7 +14,7 @@ from common.protocol import (
     create_job_results_message, create_task_result_message,
     create_task_error_message, create_ping_message
 )
-from common.serializer import hex_to_bytes
+from common.serializer import hex_to_bytes, get_runtime_info
 
 
 class WebSocketManager:
@@ -89,7 +89,7 @@ class WebSocketManager:
             args_list = message.data["args_list"]
             total_tasks = message.data["total_tasks"]
             
-            print(f"Received job {job_id} with {total_tasks} tasks")
+            print(f"Received job {job_id} with {total_tasks} tasks | foreman_runtime={get_runtime_info()}")
             
             # Store client websocket for this job
             self.job_websockets[job_id] = websocket
@@ -295,7 +295,7 @@ class WebSocketManager:
             self.available_workers.discard(worker_id)
             await self._update_worker_status(worker_id, "busy", current_task_id=task_id)
             
-            print(f"Assigned task {task_id} to worker {worker_id}")
+            print(f"Assigned task {task_id} to worker {worker_id} | foreman_runtime={get_runtime_info()}")
             
         except Exception as e:
             print(f"Error assigning task {task_id} to worker {worker_id}: {e}")

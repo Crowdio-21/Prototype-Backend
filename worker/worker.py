@@ -12,7 +12,7 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from common.serializer import deserialize_function, deserialize_data, serialize_data, hex_to_bytes
+from common.serializer import deserialize_function, deserialize_data, serialize_data, hex_to_bytes, get_runtime_info
 from common.protocol import Message, MessageType
 from .dashboard import add_dashboard_route
 
@@ -204,7 +204,7 @@ class FastAPIWorker:
             func_pickle = hex_to_bytes(message.data["func_pickle"])
             task_args = message.data["task_args"]
             
-            print(f"📋 Received task {task_id} for job {job_id}")
+            print(f"📋 Received task {task_id} for job {job_id} | worker_runtime={get_runtime_info()}")
             
             # Set current task
             self.current_task = {
@@ -253,7 +253,7 @@ class FastAPIWorker:
         start_time = datetime.utcnow()
         
         try:
-            print(f"🔄 Executing task...")
+            print(f"🔄 Executing task... | worker_runtime={get_runtime_info()}")
             
             # Deserialize the function
             func = deserialize_function(func_pickle)

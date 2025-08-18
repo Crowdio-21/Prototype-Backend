@@ -52,13 +52,123 @@ Utility scripts for testing and running the system.
 
 ## 🚀 Quick Start
 
-### 1. Install Dependencies
+### Recommended: Setup with uv (Windows, Linux, macOS)
+
+uv is a fast Python package manager and runtime manager. Use it to ensure all machines (client, foreman, workers) run the exact same Python and dependency versions.
+
+1) Install uv
+
+Linux / macOS:
 
 ```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+Windows (PowerShell):
+
+```powershell
+powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
+
+Verify installation:
+
+```bash
+uv --version
+```
+
+2) Create and activate a virtual environment
+
+```bash
+uv venv
+```
+
+Linux / macOS:
+
+```bash
+source .venv/bin/activate
+```
+
+Windows (PowerShell):
+
+```powershell
+.venv\Scripts\Activate.ps1
+```
+
+3) Align Python version across all machines (important)
+
+Pick one version (example: 3.11.9) and use it everywhere:
+
+```bash
+uv python install 3.12.6
+uv python pin 3.12.6
+uv python list
+```
+
+4) Install dependencies
+
+```bash
+uv pip install -r requirements.txt
+```
+
+5) Start the Foreman
+
+```bash
+uv run python tests/run_foreman_simple.py
+```
+
+The foreman will start on:
+- **Dashboard**: http://localhost:8000
+- **API Docs**: http://localhost:8000/docs
+- **WebSocket**: ws://localhost:9000
+
+6) Start a Worker (on the same machine or another machine on the LAN)
+
+If running on a different machine, ensure `tests/run_worker_simple.py` has `foreman_url` set to your foreman’s LAN IP (e.g., `ws://192.168.1.50:9000`).
+
+```bash
+uv run python tests/run_worker_simple.py
+```
+
+The worker will start on:
+- **Worker Dashboard**: http://localhost:8001
+- **Worker API**: http://localhost:8001/docs
+
+7) Run Example Client
+
+```bash
+uv run python tests/example_client.py localhost
+```
+
+If the foreman runs on a different machine, replace `localhost` with the foreman’s LAN IP.
+
+8) Extra uv commands (optional but useful)
+
+```bash
+# Add packages (writes to uv-managed project metadata if present)
+uv add <package-name>
+
+# Export current environment to requirements.txt
+uv export --format=requirements-txt > requirements.txt
+
+# Create a lockfile for reproducible installs
+uv lock
+
+# Initialize uv project metadata in this folder (optional)
+uv init .
+```
+
+### Alternative: Setup with pip/venv
+
+```bash
+# Create venv and install deps
+python -m venv .venv
+source .venv/bin/activate  # Windows: .venv\\Scripts\\Activate.ps1
 pip install -r requirements.txt
 ```
 
-### 2. Start the Foreman
+Then follow steps 5–7 above using `python` instead of `uv run python`.
+
+### 2. Start the Foreman (pip alternative shown; with uv use the commands above)
 
 ```bash
 cd tests
@@ -70,7 +180,7 @@ The foreman will start on:
 - **API Docs**: http://localhost:8000/docs
 - **WebSocket**: ws://localhost:9000
 
-### 3. Start a Worker
+### 3. Start a Worker (pip alternative)
 
 In another terminal:
 
@@ -83,7 +193,7 @@ The worker will start on:
 - **Worker Dashboard**: http://localhost:8001
 - **Worker API**: http://localhost:8001/docs
 
-### 4. Run Example Client
+### 4. Run Example Client (pip alternative)
 
 In a third terminal:
 
