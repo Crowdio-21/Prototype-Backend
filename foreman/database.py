@@ -75,6 +75,18 @@ class WorkerModel(Base):
 #todo: add a table for storing historical data of workers ( failed and reason for the failing(error), uptime, etc.)
 
 
+class WorkerFailureModel(Base):
+    """Historical record of worker task failures"""
+    __tablename__ = "worker_failures"
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    worker_id = Column(String, ForeignKey("workers.id"))
+    task_id = Column(String)
+    job_id = Column(String)
+    error_message = Column(Text)
+    failed_at = Column(DateTime, default=datetime.now)
+
+
 # Pydantic Models for API
 class JobBase(BaseModel):
     total_tasks: int
@@ -120,6 +132,31 @@ class WorkerResponse(BaseModel):
     
     class Config:
         from_attributes = True
+
+
+class WorkerFailureResponse(BaseModel):
+    id: int
+    worker_id: str
+    task_id: str
+    job_id: Optional[str] = None
+    error_message: str
+    failed_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+
+class WorkerFailureStats(BaseModel):
+    worker_id: str
+    total_failures: int
+    total_tasks: int
+    failure_rate: float
+
+
+class WorkerFailureSummary(BaseModel):
+    worker_id: str
+    failures: List["WorkerFailureResponse"]
+    stats: WorkerFailureStats
 
 
 class JobStats(BaseModel):
@@ -270,6 +307,56 @@ async def increment_job_completed_tasks(session: AsyncSession, job_id: str):
     )
     await session.execute(stmt)
     await session.commit()
+
+
+async def record_worker_failure(session: AsyncSession, worker_id: str, task_id: str, error_message: str, job_id: Optional[str] = None) -> None:
+    """Insert a worker failure record"""
+    failure = WorkerFailureModel(
+        worker_id=worker_id,
+        task_id=task_id,
+        job_id=job_id or "",
+        error_message=error_message,
+        failed_at=datetime.now()
+    )
+    session.add(failure)
+    await session.commit()
+
+
+async def get_worker_failures(session: AsyncSession, worker_id: str, skip: int = 0, limit: int = 100) -> List[WorkerFailureModel]:
+    """Fetch failure history for a worker"""
+    result = await session.execute(
+        select(WorkerFailureModel)
+        .where(WorkerFailureModel.worker_id == worker_id)
+        .order_by(WorkerFailureModel.failed_at.desc())
+        .offset(skip)
+        .limit(limit)
+    )
+    return result.scalars().all()
+
+
+async def get_worker_failure_stats(session: AsyncSession, worker_id: str) -> WorkerFailureStats:
+    """Compute failure stats and rate for a worker"""
+    total_failures_result = await session.execute(
+        select(func.count(WorkerFailureModel.id)).where(WorkerFailureModel.worker_id == worker_id)
+    )
+    total_failures = total_failures_result.scalar() or 0
+    
+    # Total tasks for worker = completed + failed from Workers table
+    worker_result = await session.execute(select(WorkerModel).where(WorkerModel.id == worker_id))
+    worker: Optional[WorkerModel] = worker_result.scalar_one_or_none()
+    if worker:
+        total_tasks = (worker.total_tasks_completed or 0) + (worker.total_tasks_failed or 0)
+    else:
+        total_tasks = 0
+    
+    failure_rate = float(total_failures) / float(total_tasks) if total_tasks > 0 else 0.0
+    
+    return WorkerFailureStats(
+        worker_id=worker_id,
+        total_failures=total_failures,
+        total_tasks=total_tasks,
+        failure_rate=round(failure_rate, 4)
+    )
 
 
 

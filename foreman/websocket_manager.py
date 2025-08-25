@@ -218,8 +218,14 @@ class WebSocketManager:
         # # Increment job completed tasks count (includes failed tasks)
         # await self._increment_job_completed_tasks(job_id) #wrong, do not increment if failed
         
-        # Mark worker as available
+        # Record failure in history and mark worker as available
         if worker_id:
+            try:
+                from .database import AsyncSessionLocal, record_worker_failure
+                async with AsyncSessionLocal() as session:
+                    await record_worker_failure(session, worker_id, task_id, error_message=str(error), job_id=job_id)
+            except Exception as ex:
+                print(f"Error recording worker failure for {worker_id}/{task_id}: {ex}")
             self.available_workers.add(worker_id)
             await self._update_worker_status(worker_id, "online", current_task_id=None)
             

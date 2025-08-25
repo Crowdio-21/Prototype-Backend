@@ -12,7 +12,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from .database import (
     get_db, init_db, get_jobs, get_job, get_workers, get_job_stats,
-    JobResponse, WorkerResponse, JobStats
+    JobResponse, WorkerResponse, JobStats,
+    get_worker_failures, get_worker_failure_stats, WorkerFailureResponse, WorkerFailureStats
 )
 from .websocket_manager import WebSocketManager
 
@@ -282,6 +283,19 @@ async def list_workers(db: AsyncSession = Depends(get_db)):
     """List all workers"""
     workers = await get_workers(db)
     return [WorkerResponse.from_orm(worker) for worker in workers]
+
+
+@app.get("/api/workers/{worker_id}/failures", response_model=dict)
+async def get_worker_failures_endpoint(worker_id: str, skip: int = 0, limit: int = 100, db: AsyncSession = Depends(get_db)):
+    """Get a worker's failure history and failure rate"""
+    failures = await get_worker_failures(db, worker_id, skip=skip, limit=limit)
+    failures_response = [WorkerFailureResponse.from_orm(f) for f in failures]
+    stats: WorkerFailureStats = await get_worker_failure_stats(db, worker_id)
+    return {
+        "worker_id": worker_id,
+        "failures": [f.dict() for f in failures_response],
+        "stats": stats.dict()
+    }
 
 
 @app.get("/api/websocket-stats")
