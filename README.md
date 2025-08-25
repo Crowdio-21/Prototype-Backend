@@ -76,7 +76,19 @@ Verify installation:
 uv --version
 ```
 
-2) Create and activate a virtual environment
+
+2) Align Python version across all machines (important)
+
+Pick one version (example: 3.11.9) and use it everywhere:
+
+```bash
+uv python install 3.12.6
+uv python pin 3.12.6
+uv python list
+```
+
+
+3) Create and activate a virtual environment
 
 ```bash
 uv venv
@@ -94,15 +106,6 @@ Windows (PowerShell):
 .venv\Scripts\Activate.ps1
 ```
 
-3) Align Python version across all machines (important)
-
-Pick one version (example: 3.11.9) and use it everywhere:
-
-```bash
-uv python install 3.12.6
-uv python pin 3.12.6
-uv python list
-```
 
 4) Install dependencies
 
