@@ -206,7 +206,7 @@ class WebSocketManager:
         # Update task status in database
         await self._update_task_status(
             task_id, 
-            "failed", #check if the worker reply for this 
+            "pending", #check if the worker reply for this 
             worker_id=worker_id, 
             error=error
         )
@@ -215,8 +215,8 @@ class WebSocketManager:
         if worker_id:
             await self._update_worker_task_stats(worker_id, task_completed=False)
         
-        # Increment job completed tasks count (includes failed tasks)
-        await self._increment_job_completed_tasks(job_id) #wrong, do not increment if failed
+        # # Increment job completed tasks count (includes failed tasks)
+        # await self._increment_job_completed_tasks(job_id) #wrong, do not increment if failed
         
         # Mark worker as available
         if worker_id:
