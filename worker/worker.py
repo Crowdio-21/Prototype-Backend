@@ -47,7 +47,7 @@ class FastAPIWorker:
             "tasks_completed": 0,
             "tasks_failed": 0,
             "total_execution_time": 0.0,
-            "started_at": datetime.utcnow()
+            "started_at": datetime.now()
         }
         
         # Create FastAPI app
@@ -110,7 +110,7 @@ class FastAPIWorker:
                 "is_connected": self.is_connected,
                 "current_task": self.current_task,
                 "stats": stats_for_json,
-                "uptime": (datetime.utcnow() - self.stats["started_at"]).total_seconds()
+                "uptime": (datetime.now() - self.stats["started_at"]).total_seconds()
             }
         
         @self.app.post("/restart")
@@ -140,7 +140,7 @@ class FastAPIWorker:
                         "is_connected": self.is_connected,
                         "current_task": self.current_task,
                         "stats": stats_for_json,
-                        "timestamp": datetime.utcnow().isoformat()
+                        "timestamp": datetime.now().isoformat()
                     }
                     await websocket.send_text(json.dumps(status))
                     await asyncio.sleep(5)
@@ -250,7 +250,7 @@ class FastAPIWorker:
     
     async def _execute_task(self, func_pickle: bytes, task_args: List[Any]) -> Any:
         """Execute a task in a safe environment"""
-        start_time = datetime.utcnow()
+        start_time = datetime.now()
         
         try:
             print(f"🔄 Executing task... | worker_runtime={get_runtime_info()}")
@@ -270,7 +270,7 @@ class FastAPIWorker:
                 # Multiple arguments
                 result = func(*task_args)
             
-            execution_time = (datetime.utcnow() - start_time).total_seconds()
+            execution_time = (datetime.now() - start_time).total_seconds()
             
             print(f"✅ Task completed in {execution_time:.2f}s")
             
@@ -281,7 +281,7 @@ class FastAPIWorker:
             return result
             
         except Exception as e:
-            execution_time = (datetime.utcnow() - start_time).total_seconds()
+            execution_time = (datetime.now() - start_time).total_seconds()
             error_msg = f"Task execution failed: {e}"
             
             print(f"❌ Task failed: {error_msg}")

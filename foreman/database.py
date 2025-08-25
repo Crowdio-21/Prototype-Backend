@@ -72,6 +72,7 @@ class WorkerModel(Base):
     #device specs could be added here (CPU, RAM, etc.), battery draining, network speed, uptime
     #entering time and exit time could be added here
     
+#todo: add a table for storing historical data of workers ( failed and reason for the failing(error), uptime, etc.)
 
 
 # Pydantic Models for API
@@ -204,7 +205,7 @@ async def update_job_status(session: AsyncSession, job_id: str, status: str, com
     if completed_tasks is not None:
         update_data["completed_tasks"] = completed_tasks
     if status == "completed":
-        update_data["completed_at"] = datetime.utcnow()
+        update_data["completed_at"] = datetime.now()
     
     stmt = update(JobModel).where(JobModel.id == job_id).values(**update_data)
     await session.execute(stmt)
@@ -222,9 +223,9 @@ async def update_task_status(session: AsyncSession, task_id: str, status: str, w
         update_data["error_message"] = error
     
     if status == "assigned":
-        update_data["assigned_at"] = datetime.utcnow()
+        update_data["assigned_at"] = datetime.now()
     elif status in ["completed", "failed"]:
-        update_data["completed_at"] = datetime.utcnow()
+        update_data["completed_at"] = datetime.now()
     
     stmt = update(TaskModel).where(TaskModel.id == task_id).values(**update_data)
     await session.execute(stmt)
@@ -235,7 +236,7 @@ async def update_worker_status(session: AsyncSession, worker_id: str, status: st
     """Update worker status"""
     update_data = {
         "status": status,
-        "last_seen": datetime.utcnow()
+        "last_seen": datetime.now()
     }
     if current_task_id:
         update_data["current_task_id"] = current_task_id
