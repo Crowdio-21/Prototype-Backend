@@ -85,7 +85,7 @@ class WebSocketManager:
         """Handle a new job submission from client"""
         try:
             job_id = message.job_id
-            func_pickle = hex_to_bytes(message.data["func_pickle"])
+            func_pickle = hex_to_bytes(message.data["func_pickle"]) 
             args_list = message.data["args_list"]
             total_tasks = message.data["total_tasks"]
             
@@ -206,7 +206,7 @@ class WebSocketManager:
         # Update task status in database
         await self._update_task_status(
             task_id, 
-            "failed", 
+            "failed", #check if the worker reply for this 
             worker_id=worker_id, 
             error=error
         )
@@ -216,7 +216,7 @@ class WebSocketManager:
             await self._update_worker_task_stats(worker_id, task_completed=False)
         
         # Increment job completed tasks count (includes failed tasks)
-        await self._increment_job_completed_tasks(job_id)
+        await self._increment_job_completed_tasks(job_id) #wrong, do not increment if failed
         
         # Mark worker as available
         if worker_id:
