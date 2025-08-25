@@ -31,7 +31,7 @@ class JobModel(Base):
     status = Column(String, default="pending")  # pending, running, completed, failed
     total_tasks = Column(Integer)
     completed_tasks = Column(Integer, default=0)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.now)
     completed_at = Column(DateTime, nullable=True)
     error_message = Column(Text, nullable=True)
     
@@ -63,7 +63,7 @@ class WorkerModel(Base):
     
     id = Column(String, primary_key=True)
     status = Column(String, default="online")  # online, offline, busy
-    last_seen = Column(DateTime, default=datetime.utcnow)
+    last_seen = Column(DateTime, default=datetime.now)
     current_task_id = Column(String, nullable=True)
     total_tasks_completed = Column(Integer, default=0)
     total_tasks_failed = Column(Integer, default=0)
