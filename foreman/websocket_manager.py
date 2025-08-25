@@ -318,7 +318,7 @@ class WebSocketManager:
         
         print(f"Completed: {len(completed_tasks)}, Failed: {len(failed_tasks)}")
         
-        if len(completed_tasks) + len(failed_tasks) == len(tasks) and len(tasks) > 0:
+        if (len(completed_tasks) == len(tasks)) and (len(tasks) > 0):
             # Job is complete
             job = await get_job_by_id(session, job_id)
             if job:
