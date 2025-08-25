@@ -34,6 +34,8 @@ class JobModel(Base):
     created_at = Column(DateTime, default=datetime.now)
     completed_at = Column(DateTime, nullable=True)
     error_message = Column(Text, nullable=True)
+    #serialized code could be added here if needed
+    #arguments for the job could be added here if needed
     
     # Relationships
     tasks = relationship("TaskModel", back_populates="job")
@@ -67,6 +69,9 @@ class WorkerModel(Base):
     current_task_id = Column(String, nullable=True)
     total_tasks_completed = Column(Integer, default=0)
     total_tasks_failed = Column(Integer, default=0)
+    #device specs could be added here (CPU, RAM, etc.), battery draining, network speed, uptime
+    #entering time and exit time could be added here
+    
 
 
 # Pydantic Models for API
