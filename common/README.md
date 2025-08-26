@@ -55,16 +55,16 @@ from common.serializer import serialize_function, deserialize_function
 def my_function(x):
     return x * 2
 
-func_pickle = serialize_function(my_function)
+func_code = serialize_function(my_function)
 
 # Create a message
-message = create_job_submission_message(func_pickle, [1, 2, 3], "job-123")
+message = create_job_submission_message(func_code, [1, 2, 3], "job-123")
 
 # Send message as JSON
 json_data = message.to_json()
 
 # Deserialize function
-restored_func = deserialize_function(func_pickle)
+restored_func = deserialize_function(func_code)
 ```
 
 ## Dependencies

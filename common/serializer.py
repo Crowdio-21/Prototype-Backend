@@ -2,14 +2,15 @@
 Serialization utilities for CrowdCompute
 """
 
+import inspect
 import sys
-import cloudpickle
+import types 
 from typing import Any, Callable, List
 
 
 def _env_info() -> str:
     """Return a concise runtime environment string for diagnostics"""
-    return f"python={sys.version.split()[0]} cloudpickle={getattr(cloudpickle, '__version__', 'unknown')}"
+    return f"python={sys.version.split()[0]}"
 
 
 def get_runtime_info() -> str:
@@ -17,36 +18,42 @@ def get_runtime_info() -> str:
     return _env_info()
 
 
-def serialize_function(func: Callable) -> bytes:
-    """Serialize a Python function using cloudpickle"""
+def serialize_function(func: str):
+    """Serialize a Python function as a str"""
     try:
-        return cloudpickle.dumps(func)
+        return inspect.getsource(func)
     except Exception as e:
         raise ValueError(f"Failed to serialize function ({_env_info()}): {e}")
 
+ 
+def deserialize_function(func_code: str):
+    """Turn function source code string into a callable function"""
+    
+    # Create a local namespace for the exec
+    local_vars = {}
+    exec(func_code, {}, local_vars)
 
-def deserialize_function(func_bytes: bytes) -> Callable:
-    """Deserialize a Python function using cloudpickle"""
-    try:
-        return cloudpickle.loads(func_bytes)
-    except Exception as e:
-        raise ValueError(f"Failed to deserialize function ({_env_info()}): {e}")
+    # Find the function object in local_vars
+    func = None
+    for val in local_vars.values():
+        if isinstance(val, types.FunctionType):
+            func = val
+            break
+
+    if func is None:
+        raise ValueError("No function could be deserialized from code string")
+
+    return func
 
 
 def serialize_data(data: Any) -> bytes:
-    """Serialize arbitrary data using cloudpickle"""
-    try:
-        return cloudpickle.dumps(data)
-    except Exception as e:
-        raise ValueError(f"Failed to serialize data ({_env_info()}): {e}")
+    """Serialize arbitrary data using _"""
+    pass
 
 
 def deserialize_data(data_bytes: bytes) -> Any:
-    """Deserialize arbitrary data using cloudpickle"""
-    try:
-        return cloudpickle.loads(data_bytes)
-    except Exception as e:
-        raise ValueError(f"Failed to deserialize data ({_env_info()}): {e}")
+    """Deserialize arbitrary data using _"""
+    pass
 
 
 def hex_to_bytes(hex_str: str) -> bytes:

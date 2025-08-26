@@ -16,6 +16,7 @@ from client import connect, map, run, disconnect
 
 def square(x):
     """Simple function to square a number"""
+    import time
     time.sleep(0.1)  # Simulate some work
     return x ** 2
 
@@ -32,6 +33,8 @@ def fibonacci(n):
 
 def process_data(data):
     """Process some data"""
+    import time
+    
     # Simulate some computation
     result = sum(data) * 2
     time.sleep(0.05)

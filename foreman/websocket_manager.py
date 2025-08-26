@@ -14,7 +14,7 @@ from common.protocol import (
     create_job_results_message, create_task_result_message,
     create_task_error_message, create_ping_message
 )
-from common.serializer import hex_to_bytes, get_runtime_info
+from common.serializer import get_runtime_info
 
 
 class WebSocketManager:
@@ -25,7 +25,7 @@ class WebSocketManager:
         self.clients: Dict[str, WebSocketServerProtocol] = {}
         self.available_workers: Set[str] = set()
         self.job_websockets: Dict[str, WebSocketServerProtocol] = {}  # job_id -> client_websocket
-        self.job_cache: Dict[str, bytes] = {}  # job_id -> func_pickle
+        self.job_cache: Dict[str, str] = {}  # job_id -> func_code
         
     async def handle_connection(self, websocket: WebSocketServerProtocol, path: str):
         """Handle new WebSocket connection"""
@@ -84,8 +84,10 @@ class WebSocketManager:
     async def _handle_job_submission(self, message: Message, websocket: WebSocketServerProtocol):
         """Handle a new job submission from client"""
         try:
-            job_id = message.job_id
-            func_pickle = hex_to_bytes(message.data["func_pickle"]) 
+            job_id = message.job_id 
+            
+            func_code = message.data["func_code"] 
+            
             args_list = message.data["args_list"]
             total_tasks = message.data["total_tasks"]
             
@@ -94,8 +96,8 @@ class WebSocketManager:
             # Store client websocket for this job
             self.job_websockets[job_id] = websocket
             
-            # Store func_pickle in cache
-            self.job_cache[job_id] = func_pickle
+            # Store func_code in cache
+            self.job_cache[job_id] = func_code
             
             # Create job in database first
             await self._create_job_in_database(job_id, total_tasks)
@@ -107,7 +109,7 @@ class WebSocketManager:
             await self._update_job_status(job_id, "running")
             
             # Try to assign tasks to available workers
-            await self._assign_tasks_to_workers(job_id, func_pickle, args_list)
+            await self._assign_tasks_to_workers(job_id, func_code, args_list)
             
             # Send job accepted message
             response = Message(
@@ -244,7 +246,7 @@ class WebSocketManager:
         if worker_id:
             await self._update_worker_status(worker_id, "online")
     
-    async def _assign_tasks_to_workers(self, job_id: str, func_pickle: bytes, args_list: list):
+    async def _assign_tasks_to_workers(self, job_id: str, func_code: str, args_list: list):
         """Assign available tasks to available workers"""
         from .database import get_pending_tasks, AsyncSessionLocal
         
@@ -259,7 +261,7 @@ class WebSocketManager:
                 # Deserialize args from JSON
                 import json
                 task_args = json.loads(task.args) if task.args else []
-                await self._assign_task_to_worker(job_id, task.id, func_pickle, task_args, worker_id)
+                await self._assign_task_to_worker(job_id, task.id, func_code, task_args, worker_id)
     
     async def _assign_tasks_to_worker(self, worker_id: str):
         """Assign pending tasks to a newly available worker"""
@@ -270,21 +272,21 @@ class WebSocketManager:
             pending_tasks = await get_pending_tasks(session)
         
         for task in pending_tasks:
-            # Get func_pickle from cache
+            # Get func_code from cache
             if task.job_id in self.job_cache:
-                func_pickle = self.job_cache[task.job_id]
+                func_code = self.job_cache[task.job_id]
                 # Deserialize args from JSON
                 import json
                 task_args = json.loads(task.args) if task.args else []
-                await self._assign_task_to_worker(task.job_id, task.id, func_pickle, task_args, worker_id)
+                await self._assign_task_to_worker(task.job_id, task.id, func_code, task_args, worker_id)
                 return  # Only assign one task at a time
     
-    async def _assign_task_to_worker(self, job_id: str, task_id: str, func_pickle: bytes, task_args: Any, worker_id: str):
+    async def _assign_task_to_worker(self, job_id: str, task_id: str, func_code: str, task_args: Any, worker_id: str):
         """Assign a specific task to a worker"""
         try:
             # Create task assignment message
             message = create_assign_task_message(
-                func_pickle,
+                func_code,
                 [task_args],  # Wrap in list for single task
                 task_id,
                 job_id

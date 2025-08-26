@@ -155,7 +155,7 @@ Foreman → WebSocket → Worker → Task Execution
 task_message = {
     "type": "assign_task",
     "data": {
-        "func_pickle": "serialized_function_hex",
+        "func_code": "serialized_function_hex",
         "args_list": [1, 2, 3],
         "task_id": "task-123"
     },
@@ -163,7 +163,7 @@ task_message = {
 }
 
 # 2. Deserialize function
-func = deserialize_function(func_pickle)
+func = deserialize_function(func_code)
 
 # 3. Execute function
 result = func(*args_list)

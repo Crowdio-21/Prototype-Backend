@@ -12,7 +12,7 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from common.serializer import deserialize_function, deserialize_data, serialize_data, hex_to_bytes, get_runtime_info
+from common.serializer import deserialize_function, get_runtime_info
 from common.protocol import Message, MessageType
 from .dashboard import add_dashboard_route
 
@@ -201,7 +201,7 @@ class FastAPIWorker:
         try:
             task_id = message.data["task_id"]
             job_id = message.job_id
-            func_pickle = hex_to_bytes(message.data["func_pickle"])
+            func_code = message.data["func_code"]
             task_args = message.data["task_args"]
             
             print(f"📋 Received task {task_id} for job {job_id} | worker_runtime={get_runtime_info()}")
@@ -213,7 +213,7 @@ class FastAPIWorker:
             }
             
             # Execute the task
-            result = await self._execute_task(func_pickle, task_args)
+            result = await self._execute_task(func_code, task_args)
             
             # Send result back
             result_message = Message(
@@ -248,7 +248,7 @@ class FastAPIWorker:
             # Clear current task
             self.current_task = None
     
-    async def _execute_task(self, func_pickle: bytes, task_args: List[Any]) -> Any:
+    async def _execute_task(self, func_code: str, task_args: List[Any]) -> Any:
         """Execute a task in a safe environment"""
         start_time = datetime.now()
         
@@ -256,7 +256,7 @@ class FastAPIWorker:
             print(f"🔄 Executing task... | worker_runtime={get_runtime_info()}")
             
             # Deserialize the function
-            func = deserialize_function(func_pickle)
+            func = deserialize_function(func_code)
             
             # Execute the function with the provided arguments
             if isinstance(task_args, list) and len(task_args) == 1:

@@ -111,7 +111,7 @@ async def connect_to_foreman():
         message = {
             "type": "submit_job",
             "data": {
-                "func_pickle": "serialized_function_hex",
+                "func_code": "serialized_function_hex",
                 "args_list": [1, 2, 3, 4, 5],
                 "total_tasks": 5
             },

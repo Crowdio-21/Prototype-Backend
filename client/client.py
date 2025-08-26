@@ -2,7 +2,7 @@
 CrowdCompute Client SDK
 """
 
-import asyncio
+import asyncio 
 import json
 import uuid
 import websockets
@@ -11,7 +11,7 @@ from common.protocol import (
     Message, MessageType, create_submit_job_message, 
     create_ping_message, create_pong_message
 )
-from common.serializer import serialize_function, hex_to_bytes
+from common.serializer import serialize_function
 
 
 class CrowdComputeClient:
@@ -108,11 +108,11 @@ class CrowdComputeClient:
         self.pending_jobs[job_id] = future
         
         try:
-            # Serialize function
-            func_pickle = serialize_function(func)
+            # # Serialize function
+            func_code = serialize_function(func)
             
             # Create submission message
-            message = create_submit_job_message(func_pickle, iterable, job_id)
+            message = create_submit_job_message(func_code, iterable, job_id)
             
             # Send to foreman
             await self.websocket.send(message.to_json())

@@ -63,12 +63,12 @@ class Message:
 
 
 # Message factory functions
-def create_submit_job_message(func_pickle: bytes, args_list: List[Any], job_id: str) -> Message:
+def create_submit_job_message(func_code: str, args_list: List[Any], job_id: str) -> Message:
     """Create a job submission message"""
     return Message(
         msg_type=MessageType.SUBMIT_JOB,
         data={
-            "func_pickle": func_pickle.hex(),  # Convert bytes to hex string for JSON
+            "func_code": func_code,
             "args_list": args_list,
             "total_tasks": len(args_list)
         },
@@ -76,12 +76,12 @@ def create_submit_job_message(func_pickle: bytes, args_list: List[Any], job_id: 
     )
 
 
-def create_assign_task_message(func_pickle: bytes, task_args: List[Any], task_id: str, job_id: str) -> Message:
+def create_assign_task_message(func_code: str, task_args: List[Any], task_id: str, job_id: str) -> Message:
     """Create a task assignment message"""
     return Message(
         msg_type=MessageType.ASSIGN_TASK,
         data={
-            "func_pickle": func_pickle.hex(),
+            "func_code": func_code,
             "task_args": task_args,
             "task_id": task_id
         },
