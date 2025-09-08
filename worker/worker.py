@@ -6,6 +6,8 @@ import asyncio
 import json
 import uuid
 import websockets
+import platform
+import psutil
 from datetime import datetime
 from typing import List, Optional, Dict, Any
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
@@ -49,6 +51,9 @@ class FastAPIWorker:
             "total_execution_time": 0.0,
             "started_at": datetime.now()
         }
+        
+        # Device specifications for PSO load balancing
+        self.device_specs = self._get_device_specifications()
         
         # Create FastAPI app
         self.app = FastAPI(
@@ -147,6 +152,73 @@ class FastAPIWorker:
             except WebSocketDisconnect:
                 print("Status WebSocket disconnected")
     
+    def _get_device_specifications(self) -> Dict[str, Any]:
+        """Get device specifications for PSO load balancing"""
+        try:
+            # Get CPU information
+            cpu_freq = psutil.cpu_freq()
+            cpu_frequency = cpu_freq.max / 1000.0 if cpu_freq and cpu_freq.max else 2.0  # Convert to GHz
+            
+            # Get CPU cores
+            num_cores = psutil.cpu_count(logical=False) or 4
+            
+            # Get current CPU load
+            current_cpu_load = psutil.cpu_percent(interval=1) or 20.0
+            
+            # Get memory information
+            memory = psutil.virtual_memory()
+            memory_gb = memory.total / (1024**3)  # Convert to GB
+            
+            # Get network information (simplified)
+            network_speed = 100.0  # Default to 100 Mbps, could be enhanced with actual network detection
+            
+            # Determine device type and platform
+            device_type = "desktop" if platform.system() != "Linux" else "server"
+            platform_name = platform.system().lower()
+            
+            # Simulate battery level (for desktop/server, assume always high)
+            battery_level = 95.0
+            try:
+                battery = psutil.sensors_battery()
+                if battery:
+                    battery_level = battery.percent or 95.0
+            except:
+                pass
+            
+            # Signal strength (simplified - assume good for wired connections)
+            signal_strength = 5 if device_type == "desktop" else 4
+            
+            # Reliability score (based on uptime and system stability)
+            reliability_score = 1.0  # Could be enhanced with historical data
+            
+            return {
+                "cpu_frequency": round(cpu_frequency, 2),
+                "num_cores": num_cores,
+                "current_cpu_load": round(current_cpu_load, 1),
+                "battery_level": round(battery_level, 1),
+                "signal_strength": signal_strength,
+                "memory_gb": round(memory_gb, 1),
+                "network_speed": network_speed,
+                "reliability_score": reliability_score,
+                "device_type": device_type,
+                "platform": platform_name
+            }
+        except Exception as e:
+            print(f"Error getting device specifications: {e}")
+            # Return default specifications
+            return {
+                "cpu_frequency": 2.0,
+                "num_cores": 4,
+                "current_cpu_load": 20.0,
+                "battery_level": 85.0,
+                "signal_strength": 4,
+                "memory_gb": 8.0,
+                "network_speed": 100.0,
+                "reliability_score": 1.0,
+                "device_type": "unknown",
+                "platform": "unknown"
+            }
+    
     async def connect(self):
         """Connect to the foreman"""
         try:
@@ -155,10 +227,13 @@ class FastAPIWorker:
             self.is_connected = True
             print(f"✅ Connected to foreman as worker {self.config.worker_id}")
             
-            # Send worker ready message
+            # Send worker ready message with device specifications
             ready_message = Message(
                 msg_type=MessageType.WORKER_READY,
-                data={"worker_id": self.config.worker_id}
+                data={
+                    "worker_id": self.config.worker_id,
+                    "device_specs": self.device_specs
+                }
             )
             await self.websocket.send(ready_message.to_json())
             
