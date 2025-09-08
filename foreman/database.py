@@ -55,6 +55,14 @@ class TaskModel(Base):
     assigned_at = Column(DateTime, nullable=True)
     completed_at = Column(DateTime, nullable=True)
     
+    # Task requirements for PSO load balancing
+    computational_requirement = Column(String, default="1000.0")  # MIPS
+    memory_requirement = Column(String, default="0.1")  # GB
+    priority = Column(Integer, default=3)  # 1-5, where 1 is highest priority
+    estimated_duration = Column(String, default="0.0")  # seconds
+    deadline = Column(DateTime, nullable=True)
+    task_type = Column(String, default="compute")  # compute, io, network, mixed
+    
     # Relationships
     job = relationship("JobModel", back_populates="tasks")
 
@@ -69,8 +77,18 @@ class WorkerModel(Base):
     current_task_id = Column(String, nullable=True)
     total_tasks_completed = Column(Integer, default=0)
     total_tasks_failed = Column(Integer, default=0)
-    #device specs could be added here (CPU, RAM, etc.), battery draining, network speed, uptime
-    #entering time and exit time could be added here
+    
+    # Device specifications for PSO load balancing
+    cpu_frequency = Column(String, default="2.0")  # GHz
+    num_cores = Column(Integer, default=4)
+    current_cpu_load = Column(String, default="20.0")  # percentage
+    battery_level = Column(String, default="85.0")  # percentage
+    signal_strength = Column(Integer, default=4)  # 1-5 scale
+    memory_gb = Column(String, default="8.0")  # GB
+    network_speed = Column(String, default="100.0")  # Mbps
+    reliability_score = Column(String, default="1.0")  # 0.0-1.0
+    device_type = Column(String, default="mobile")  # mobile, desktop, server
+    platform = Column(String, default="unknown")  # android, ios, windows, linux, macos
     
 #todo: add a table for storing historical data of workers ( failed and reason for the failing(error), uptime, etc.)
 
@@ -196,18 +214,47 @@ async def create_job(session: AsyncSession, job_id: str, total_tasks: int) -> Jo
     return job
 
 
-async def create_task(session: AsyncSession, task_id: str, job_id: str) -> TaskModel:
-    """Create a new task"""
-    task = TaskModel(id=task_id, job_id=job_id)
+async def create_task(session: AsyncSession, task_id: str, job_id: str,
+                     computational_requirement: str = "1000.0", memory_requirement: str = "0.1",
+                     priority: int = 3, estimated_duration: str = "0.0",
+                     deadline: Optional[datetime] = None, task_type: str = "compute") -> TaskModel:
+    """Create a new task with requirements"""
+    task = TaskModel(
+        id=task_id, 
+        job_id=job_id,
+        computational_requirement=computational_requirement,
+        memory_requirement=memory_requirement,
+        priority=priority,
+        estimated_duration=estimated_duration,
+        deadline=deadline,
+        task_type=task_type
+    )
     session.add(task)
     await session.commit()
     await session.refresh(task)
     return task
 
 
-async def create_worker(session: AsyncSession, worker_id: str) -> WorkerModel:
-    """Create a new worker"""
-    worker = WorkerModel(id=worker_id)
+async def create_worker(session: AsyncSession, worker_id: str, 
+                       cpu_frequency: str = "2.0", num_cores: int = 4,
+                       current_cpu_load: str = "20.0", battery_level: str = "85.0",
+                       signal_strength: int = 4, memory_gb: str = "8.0",
+                       network_speed: str = "100.0", reliability_score: str = "1.0",
+                       device_type: str = "mobile", platform: str = "unknown") -> WorkerModel:
+    """Create a new worker with device specifications"""
+    worker = WorkerModel(
+        id=worker_id,
+        cpu_frequency=cpu_frequency,
+        num_cores=num_cores,
+        current_cpu_load=current_cpu_load,
+        battery_level=battery_level,
+        signal_strength=signal_strength,
+        memory_gb=memory_gb,
+        network_speed=network_speed,
+        reliability_score=reliability_score,
+        device_type=device_type,
+        platform=platform
+    )
     session.add(worker)
     await session.commit()
     await session.refresh(worker)
@@ -277,6 +324,34 @@ async def update_worker_status(session: AsyncSession, worker_id: str, status: st
     }
     if current_task_id:
         update_data["current_task_id"] = current_task_id
+    
+    stmt = update(WorkerModel).where(WorkerModel.id == worker_id).values(**update_data)
+    await session.execute(stmt)
+    await session.commit()
+
+
+async def update_worker_specs(session: AsyncSession, worker_id: str, 
+                            cpu_frequency: str = None, current_cpu_load: str = None,
+                            battery_level: str = None, signal_strength: int = None,
+                            memory_gb: str = None, network_speed: str = None,
+                            reliability_score: str = None):
+    """Update worker device specifications"""
+    update_data = {"last_seen": datetime.now()}
+    
+    if cpu_frequency is not None:
+        update_data["cpu_frequency"] = cpu_frequency
+    if current_cpu_load is not None:
+        update_data["current_cpu_load"] = current_cpu_load
+    if battery_level is not None:
+        update_data["battery_level"] = battery_level
+    if signal_strength is not None:
+        update_data["signal_strength"] = signal_strength
+    if memory_gb is not None:
+        update_data["memory_gb"] = memory_gb
+    if network_speed is not None:
+        update_data["network_speed"] = network_speed
+    if reliability_score is not None:
+        update_data["reliability_score"] = reliability_score
     
     stmt = update(WorkerModel).where(WorkerModel.id == worker_id).values(**update_data)
     await session.execute(stmt)
