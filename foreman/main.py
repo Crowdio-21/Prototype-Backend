@@ -16,9 +16,28 @@ from .database import (
     get_worker_failures, get_worker_failure_stats, WorkerFailureResponse, WorkerFailureStats
 )
 from .websocket_manager import WebSocketManager
+from .pso_load_balancer import PSOTaskScheduler
+from pydantic import BaseModel
+from typing import Optional
 
 # Global WebSocket manager
 ws_manager: WebSocketManager = None
+
+# PSO Configuration Models
+class PSOConfig(BaseModel):
+    max_iterations: Optional[int] = None
+    population_size: Optional[int] = None
+
+class PSOToggle(BaseModel):
+    enabled: bool
+
+class PSOMetrics(BaseModel):
+    total_energy_consumption: float
+    makespan: float
+    load_balance_variance: float
+    device_utilization: dict
+    energy_per_device: dict
+    memory_usage_per_device: dict
 
 
 @asynccontextmanager
@@ -304,6 +323,73 @@ async def get_websocket_stats():
     if ws_manager:
         return ws_manager.get_stats()
     return {"error": "WebSocket manager not available"}
+
+
+# PSO Load Balancer API endpoints
+@app.get("/api/pso/status")
+async def get_pso_status():
+    """Get PSO load balancer status"""
+    if ws_manager:
+        stats = ws_manager.get_stats()
+        return {
+            "pso_enabled": stats.get("pso_scheduling_enabled", False),
+            "pso_stats": stats.get("pso_stats", {}),
+            "connected_workers": stats.get("connected_workers", 0),
+            "available_workers": stats.get("available_workers", 0)
+        }
+    return {"error": "WebSocket manager not initialized"}
+
+
+@app.post("/api/pso/toggle")
+async def toggle_pso_scheduling(toggle: PSOToggle):
+    """Enable or disable PSO scheduling"""
+    if ws_manager:
+        ws_manager.enable_pso_scheduling(toggle.enabled)
+        return {"message": f"PSO scheduling {'enabled' if toggle.enabled else 'disabled'}"}
+    return {"error": "WebSocket manager not initialized"}
+
+
+@app.post("/api/pso/configure")
+async def configure_pso(config: PSOConfig):
+    """Configure PSO parameters"""
+    if ws_manager:
+        ws_manager.configure_pso(
+            max_iterations=config.max_iterations,
+            population_size=config.population_size
+        )
+        return {"message": "PSO configuration updated"}
+    return {"error": "WebSocket manager not initialized"}
+
+
+@app.get("/api/pso/metrics")
+async def get_pso_metrics():
+    """Get PSO performance metrics"""
+    if ws_manager and ws_manager.pso_scheduler:
+        return ws_manager.pso_scheduler.get_scheduling_stats()
+    return {"error": "PSO scheduler not available"}
+
+
+@app.get("/api/workers/{worker_id}/specs")
+async def get_worker_specs(worker_id: str, db: AsyncSession = Depends(get_db)):
+    """Get worker device specifications"""
+    workers = await get_workers(db)
+    worker = next((w for w in workers if w.id == worker_id), None)
+    if not worker:
+        raise HTTPException(status_code=404, detail="Worker not found")
+    
+    return {
+        "worker_id": worker.id,
+        "cpu_frequency": worker.cpu_frequency,
+        "num_cores": worker.num_cores,
+        "current_cpu_load": worker.current_cpu_load,
+        "battery_level": worker.battery_level,
+        "signal_strength": worker.signal_strength,
+        "memory_gb": worker.memory_gb,
+        "network_speed": worker.network_speed,
+        "reliability_score": worker.reliability_score,
+        "device_type": worker.device_type,
+        "platform": worker.platform
+    }
 
 
 # WebSocket endpoint for dashboard updates
