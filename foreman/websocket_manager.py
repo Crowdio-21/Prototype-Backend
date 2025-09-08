@@ -8,7 +8,8 @@ import uuid
 import websockets
 from typing import Dict, Set, Optional, Any
 from websockets.server import WebSocketServerProtocol
-from .database import AsyncSession, update_worker_status, update_task_status, update_job_status
+from .database import AsyncSession, update_worker_status, update_task_status, update_job_status, get_workers, get_pending_tasks
+from .pso_load_balancer import PSOTaskScheduler
 from common.protocol import (
     Message, MessageType, create_assign_task_message, 
     create_job_results_message, create_task_result_message,
@@ -26,6 +27,10 @@ class WebSocketManager:
         self.available_workers: Set[str] = set()
         self.job_websockets: Dict[str, WebSocketServerProtocol] = {}  # job_id -> client_websocket
         self.job_cache: Dict[str, str] = {}  # job_id -> func_code
+        
+        # PSO Load Balancer
+        self.pso_scheduler = PSOTaskScheduler(max_iterations=30, population_size=20)
+        self.use_pso_scheduling = True  # Flag to enable/disable PSO scheduling
         
     async def handle_connection(self, websocket: WebSocketServerProtocol, path: str):
         """Handle new WebSocket connection"""
@@ -129,17 +134,20 @@ class WebSocketManager:
             await websocket.send(error_msg.to_json())
     
     async def _handle_worker_ready(self, message: Message, websocket: WebSocketServerProtocol):
-        """Handle worker ready message"""
+        """Handle worker ready message with device specifications"""
         worker_id = message.data["worker_id"]
         
-        print(f"Worker {worker_id} connected")
+        # Extract device specifications from message
+        device_specs = message.data.get("device_specs", {})
+        
+        print(f"Worker {worker_id} connected with specs: {device_specs}")
         
         # Store worker websocket
         self.workers[worker_id] = websocket
         self.available_workers.add(worker_id)
         
-        # Create worker in database if it doesn't exist
-        await self._create_worker_in_database(worker_id)
+        # Create worker in database with device specifications
+        await self._create_worker_in_database(worker_id, device_specs)
         
         # Update worker status in database
         await self._update_worker_status(worker_id, "online")
@@ -247,14 +255,87 @@ class WebSocketManager:
             await self._update_worker_status(worker_id, "online")
     
     async def _assign_tasks_to_workers(self, job_id: str, func_code: str, args_list: list):
-        """Assign available tasks to available workers"""
-        from .database import get_pending_tasks, AsyncSessionLocal
+        """Assign available tasks to available workers using PSO optimization"""
+        from .database import get_pending_tasks, get_workers, AsyncSessionLocal
         
         # Get pending tasks for this job
         async with AsyncSessionLocal() as session:
             pending_tasks = await get_pending_tasks(session, job_id)
+            workers = await get_workers(session)
         
-        # Assign tasks to available workers
+        if not pending_tasks or not workers:
+            return
+        
+        # Use PSO scheduling if enabled and we have enough tasks/workers
+        if (self.use_pso_scheduling and 
+            len(pending_tasks) >= 3 and 
+            len(workers) >= 2):
+            await self._assign_tasks_with_pso(job_id, func_code, pending_tasks, workers)
+        else:
+            # Fallback to simple round-robin assignment
+            await self._assign_tasks_simple(job_id, func_code, pending_tasks)
+
+    async def _assign_tasks_with_pso(self, job_id: str, func_code: str, pending_tasks: list, workers: list):
+        """Assign tasks using PSO optimization"""
+        try:
+            # Convert workers to the format expected by PSO
+            worker_data = []
+            for worker in workers:
+                if worker.id in self.available_workers:  # Only consider available workers
+                    worker_data.append({
+                        'id': worker.id,
+                        'cpu_frequency': float(worker.cpu_frequency),
+                        'num_cores': worker.num_cores,
+                        'current_cpu_load': float(worker.current_cpu_load),
+                        'battery_level': float(worker.battery_level),
+                        'signal_strength': worker.signal_strength,
+                        'memory_gb': float(worker.memory_gb),
+                        'network_speed': float(worker.network_speed),
+                        'reliability_score': float(worker.reliability_score)
+                    })
+            
+            # Convert tasks to the format expected by PSO
+            task_data = []
+            for task in pending_tasks:
+                task_data.append({
+                    'id': task.id,
+                    'computational_requirement': float(task.computational_requirement),
+                    'memory_requirement': float(task.memory_requirement),
+                    'priority': task.priority,
+                    'estimated_duration': float(task.estimated_duration),
+                    'deadline': task.deadline
+                })
+            
+            # Run PSO optimization
+            result = await self.pso_scheduler.schedule_tasks(worker_data, task_data)
+            
+            if result['success']:
+                print(f"PSO optimization completed for job {job_id}")
+                print(f"Optimization time: {result['optimization_time']:.2f}s")
+                print(f"Fitness improvement: {result['fitness_improvement']:.4f}")
+                
+                # Assign tasks based on PSO results
+                for task_id, assigned_worker_id in result['allocation'].items():
+                    if assigned_worker_id in self.available_workers:
+                        # Find the task object
+                        task_obj = next((t for t in pending_tasks if t.id == task_id), None)
+                        if task_obj:
+                            # Deserialize args from JSON
+                            import json
+                            task_args = json.loads(task_obj.args) if task_obj.args else []
+                            await self._assign_task_to_worker(job_id, task_id, func_code, task_args, assigned_worker_id)
+            else:
+                print(f"PSO optimization failed: {result.get('error', 'Unknown error')}")
+                # Fallback to simple assignment
+                await self._assign_tasks_simple(job_id, func_code, pending_tasks)
+                
+        except Exception as e:
+            print(f"Error in PSO task assignment: {e}")
+            # Fallback to simple assignment
+            await self._assign_tasks_simple(job_id, func_code, pending_tasks)
+
+    async def _assign_tasks_simple(self, job_id: str, func_code: str, pending_tasks: list):
+        """Simple round-robin task assignment (fallback method)"""
         for task in pending_tasks:
             if self.available_workers:
                 worker_id = self.available_workers.pop()
@@ -384,9 +465,9 @@ class WebSocketManager:
             await create_job(session, job_id, total_tasks)
         print(f"Created job {job_id} in database")
     
-    async def _create_worker_in_database(self, worker_id: str):
-        """Create worker in database if it doesn't exist"""
-        from .database import create_worker, get_workers, update_worker_status, AsyncSessionLocal
+    async def _create_worker_in_database(self, worker_id: str, device_specs: dict = None):
+        """Create worker in database if it doesn't exist with device specifications"""
+        from .database import create_worker, get_workers, update_worker_status, update_worker_specs, AsyncSessionLocal
         
         # Create a new session for this operation
         async with AsyncSessionLocal() as session:
@@ -395,10 +476,40 @@ class WebSocketManager:
             existing_worker_ids = [w.id for w in workers]
             
             if worker_id not in existing_worker_ids:
-                await create_worker(session, worker_id)
-                print(f"Created worker {worker_id} in database")
+                # Create new worker with device specifications
+                if device_specs:
+                    await create_worker(
+                        session, worker_id,
+                        cpu_frequency=str(device_specs.get('cpu_frequency', 2.0)),
+                        num_cores=device_specs.get('num_cores', 4),
+                        current_cpu_load=str(device_specs.get('current_cpu_load', 20.0)),
+                        battery_level=str(device_specs.get('battery_level', 85.0)),
+                        signal_strength=device_specs.get('signal_strength', 4),
+                        memory_gb=str(device_specs.get('memory_gb', 8.0)),
+                        network_speed=str(device_specs.get('network_speed', 100.0)),
+                        reliability_score=str(device_specs.get('reliability_score', 1.0)),
+                        device_type=device_specs.get('device_type', 'mobile'),
+                        platform=device_specs.get('platform', 'unknown')
+                    )
+                else:
+                    await create_worker(session, worker_id)
+                print(f"Created worker {worker_id} in database with device specs")
             else:
-                # Worker exists, ensure it's marked as online
+                # Worker exists, update device specifications if provided
+                if device_specs:
+                    await update_worker_specs(
+                        session, worker_id,
+                        cpu_frequency=str(device_specs.get('cpu_frequency')),
+                        current_cpu_load=str(device_specs.get('current_cpu_load')),
+                        battery_level=str(device_specs.get('battery_level')),
+                        signal_strength=device_specs.get('signal_strength'),
+                        memory_gb=str(device_specs.get('memory_gb')),
+                        network_speed=str(device_specs.get('network_speed')),
+                        reliability_score=str(device_specs.get('reliability_score'))
+                    )
+                    print(f"Updated device specs for worker {worker_id}")
+                
+                # Ensure it's marked as online
                 await update_worker_status(session, worker_id, "online")
                 print(f"Worker {worker_id} already exists in database, marked as online")
     
@@ -500,9 +611,25 @@ class WebSocketManager:
     
     def get_stats(self) -> Dict[str, Any]:
         """Get current WebSocket manager stats"""
+        pso_stats = self.pso_scheduler.get_scheduling_stats()
         return {
             "connected_workers": len(self.workers),
             "available_workers": len(self.available_workers),
             "connected_clients": len(self.job_websockets),
-            "active_jobs": len(self.job_websockets)
+            "active_jobs": len(self.job_websockets),
+            "pso_scheduling_enabled": self.use_pso_scheduling,
+            "pso_stats": pso_stats
         }
+    
+    def enable_pso_scheduling(self, enabled: bool = True):
+        """Enable or disable PSO scheduling"""
+        self.use_pso_scheduling = enabled
+        print(f"PSO scheduling {'enabled' if enabled else 'disabled'}")
+    
+    def configure_pso(self, max_iterations: int = None, population_size: int = None):
+        """Configure PSO parameters"""
+        if max_iterations is not None:
+            self.pso_scheduler.max_iterations = max_iterations
+        if population_size is not None:
+            self.pso_scheduler.population_size = population_size
+        print(f"PSO configured: iterations={self.pso_scheduler.max_iterations}, population={self.pso_scheduler.population_size}")
