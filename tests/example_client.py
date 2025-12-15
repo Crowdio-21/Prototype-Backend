@@ -11,7 +11,7 @@ import time
 # Add parent directory to Python path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from client import connect, map, run, disconnect
+from developer_sdk import connect, map, run, disconnect
 
 
 def square(x):

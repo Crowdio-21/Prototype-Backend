@@ -2,17 +2,14 @@
 WebSocket manager for CrowdCompute Foreman
 """
 
-import asyncio
-import json
-import uuid
+import asyncio 
 import websockets
-from typing import Dict, Set, Optional, Any
+from typing import Dict, Set, Any
 from websockets.server import WebSocketServerProtocol
-from .database import AsyncSession, update_worker_status, update_task_status, update_job_status
+from ..db.database import update_job_status
 from common.protocol import (
     Message, MessageType, create_assign_task_message, 
-    create_job_results_message, create_task_result_message,
-    create_task_error_message, create_ping_message
+    create_job_results_message, create_ping_message
 )
 from common.serializer import get_runtime_info
 
@@ -223,7 +220,7 @@ class WebSocketManager:
         # Record failure in history and mark worker as available
         if worker_id:
             try:
-                from .database import AsyncSessionLocal, record_worker_failure
+                from ..db.database import AsyncSessionLocal, record_worker_failure
                 async with AsyncSessionLocal() as session:
                     await record_worker_failure(session, worker_id, task_id, error_message=str(error), job_id=job_id)
             except Exception as ex:
@@ -248,7 +245,7 @@ class WebSocketManager:
     
     async def _assign_tasks_to_workers(self, job_id: str, func_code: str, args_list: list):
         """Assign available tasks to available workers"""
-        from .database import get_pending_tasks, AsyncSessionLocal
+        from ..db.database import get_pending_tasks, AsyncSessionLocal
         
         # Get pending tasks for this job
         async with AsyncSessionLocal() as session:
@@ -265,7 +262,7 @@ class WebSocketManager:
     
     async def _assign_tasks_to_worker(self, worker_id: str):
         """Assign pending tasks to a newly available worker"""
-        from .database import get_pending_tasks, AsyncSessionLocal
+        from ..db.database import get_pending_tasks, AsyncSessionLocal
         
         # Find any pending tasks across all jobs
         async with AsyncSessionLocal() as session:
@@ -312,7 +309,7 @@ class WebSocketManager:
     
     async def _check_job_completion(self, job_id: str):
         """Check if a job is complete and send results to client"""
-        from .database import get_job_tasks, get_job_by_id, AsyncSessionLocal
+        from ..db.database import get_job_tasks, get_job_by_id, AsyncSessionLocal
         
         # Get all tasks for this job
         async with AsyncSessionLocal() as session:
@@ -370,14 +367,14 @@ class WebSocketManager:
     
     async def _get_job_by_id(self, job_id: str):
         """Get job by ID from database"""
-        from .database import get_job_by_id, AsyncSessionLocal
+        from ..db.database import get_job_by_id, AsyncSessionLocal
         
         async with AsyncSessionLocal() as session:
             return await get_job_by_id(session, job_id)
     
     async def _create_job_in_database(self, job_id: str, total_tasks: int):
         """Create job in database"""
-        from .database import create_job, AsyncSessionLocal
+        from ..db.database import create_job, AsyncSessionLocal
         
         # Create a new session for this operation
         async with AsyncSessionLocal() as session:
@@ -386,7 +383,7 @@ class WebSocketManager:
     
     async def _create_worker_in_database(self, worker_id: str):
         """Create worker in database if it doesn't exist"""
-        from .database import create_worker, get_workers, update_worker_status, AsyncSessionLocal
+        from ..db.database import create_worker, get_workers, update_worker_status, AsyncSessionLocal
         
         # Create a new session for this operation
         async with AsyncSessionLocal() as session:
@@ -404,7 +401,7 @@ class WebSocketManager:
     
     async def _create_tasks_for_job(self, job_id: str, args_list: list):
         """Create tasks in database for a job"""
-        from .database import TaskModel, AsyncSessionLocal
+        from ..db.database import TaskModel, AsyncSessionLocal
         import json
         
         # Create a new session for this operation
@@ -428,35 +425,35 @@ class WebSocketManager:
     
     async def _update_job_status(self, job_id: str, status: str, completed_tasks: int = None):
         """Update job status with new session"""
-        from .database import update_job_status, AsyncSessionLocal
+        from ..db.database import update_job_status, AsyncSessionLocal
         
         async with AsyncSessionLocal() as session:
             await update_job_status(session, job_id, status, completed_tasks)
     
     async def _update_task_status(self, task_id: str, status: str, worker_id: str = None, result: str = None, error: str = None):
         """Update task status with new session"""
-        from .database import update_task_status, AsyncSessionLocal
+        from ..db.database import update_task_status, AsyncSessionLocal
         
         async with AsyncSessionLocal() as session:
             await update_task_status(session, task_id, status, worker_id, result, error)
     
     async def _update_worker_status(self, worker_id: str, status: str, current_task_id: str = None):
         """Update worker status with new session"""
-        from .database import update_worker_status, AsyncSessionLocal
+        from ..db.database import update_worker_status, AsyncSessionLocal
         
         async with AsyncSessionLocal() as session:
             await update_worker_status(session, worker_id, status, current_task_id)
     
     async def _update_worker_task_stats(self, worker_id: str, task_completed: bool = True):
         """Update worker task statistics with new session"""
-        from .database import update_worker_task_stats, AsyncSessionLocal
+        from ..db.database import update_worker_task_stats, AsyncSessionLocal
         
         async with AsyncSessionLocal() as session:
             await update_worker_task_stats(session, worker_id, task_completed)
     
     async def _increment_job_completed_tasks(self, job_id: str):
         """Increment job completed tasks count with new session"""
-        from .database import increment_job_completed_tasks, AsyncSessionLocal
+        from ..db.database import increment_job_completed_tasks, AsyncSessionLocal
         
         async with AsyncSessionLocal() as session:
             await increment_job_completed_tasks(session, job_id)

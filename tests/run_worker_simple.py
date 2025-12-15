@@ -13,7 +13,7 @@ import time
 # Add parent directory to Python path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from worker.worker import FastAPIWorker, WorkerConfig
+from pc_worker.worker import FastAPIWorker, WorkerConfig
 
 
 def run_worker_background(worker):
