@@ -1,6 +1,6 @@
 # Client Package
 
-The `client` package provides the CrowdCompute SDK for users to submit distributed computing jobs to the foreman.
+The `deveoper_sdk` package provides the CrowdCompute SDK for users to submit distributed computing jobs to the foreman.
 
 ## Overview
 
@@ -18,13 +18,15 @@ Main client implementation providing the CrowdCompute SDK interface.
 - `connect(host, port)` - Connect to foreman server
 - `disconnect()` - Disconnect from foreman
 - `map(func, iterable)` - Map function over iterable using distributed workers
-- `run(func, *args, **kwargs)` - Run single function with arguments
+- `run(func, *args, **kwargs)` - Run single function with arguments *(Status: Todo)*
+
+### `api.py`
 
 **Public API Functions:**
 - `connect(host, port)` - Connect to foreman
 - `disconnect()` - Disconnect from foreman
 - `map(func, iterable)` - Distributed map operation
-- `run(func, *args, **kwargs)` - Single function execution
+- `run(func, *args, **kwargs)` - Single function execution *(Status: Todo)*
 
 ### `__init__.py`
 Package initialization that exports the main SDK functions.
@@ -35,7 +37,7 @@ Package initialization that exports the main SDK functions.
 
 ```python
 import asyncio
-from client import connect, map, disconnect
+from api import connect, map, disconnect
 
 async def main():
     # Connect to foreman
@@ -57,11 +59,11 @@ async def main():
 asyncio.run(main())
 ```
 
-### Advanced Usage
+### Advanced Usage *(Status: Todo)*
 
 ```python
 import asyncio
-from client import connect, map, run, disconnect
+from api import connect, map, run, disconnect
 
 async def advanced_example():
     await connect("192.168.1.100", 9000)
@@ -123,7 +125,7 @@ User Code → Client SDK → WebSocket → Foreman → Workers
 ```
 
 1. **Job Submission** - User calls `map()` or `run()`
-2. **Function Serialization** - Function is serialized using cloudpickle
+2. **Function Serialization** - Function is serialized using inspect python package
 3. **Message Creation** - Job submission message is created
 4. **WebSocket Transmission** - Message sent to foreman
 5. **Result Collection** - Results collected and returned to user

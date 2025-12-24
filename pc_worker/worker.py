@@ -12,7 +12,7 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from common.serializer import deserialize_function, get_runtime_info
+from common.serializer import deserialize_function_for_PC, get_runtime_info
 from common.protocol import Message, MessageType
 from .dashboard import add_dashboard_route
 
@@ -256,7 +256,7 @@ class FastAPIWorker:
             print(f"🔄 Executing task... | worker_runtime={get_runtime_info()}")
             
             # Deserialize the function
-            func = deserialize_function(func_code)
+            func = deserialize_function_for_PC(func_code)
             
             # Execute the function with the provided arguments
             if isinstance(task_args, list) and len(task_args) == 1:
