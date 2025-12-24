@@ -76,6 +76,14 @@ def create_submit_job_message(func_code: str, args_list: List[Any], job_id: str)
     )
 
 
+def create_job_accepted_message(job_id: str) -> Message:
+    """Create a job accepted message"""
+    return Message(
+        MessageType.JOB_ACCEPTED,
+        {"job_id": job_id},
+        job_id
+    )
+
 def create_assign_task_message(func_code: str, task_args: List[Any], task_id: str, job_id: str) -> Message:
     """Create a task assignment message"""
     return Message(

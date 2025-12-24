@@ -1,6 +1,6 @@
 # Common Package
 
-The `common` package contains shared modules used across all CrowdCompute components (client, foreman, and worker).
+The `common` package contains shared modules used across all CrowdCompute components (developer SDK, foreman, and worker).
 
 ## Overview
 
@@ -38,18 +38,18 @@ Defines the message types and communication protocol for WebSocket-based communi
 Provides utilities for serializing and deserializing Python functions and data for network transmission.
 
 **Key Functions:**
-- `serialize_function(func)` - Serialize Python function to hex string
-- `deserialize_function(hex_data)` - Deserialize hex string back to function
-- `serialize_data(data)` - Serialize data to JSON string
-- `deserialize_data(json_data)` - Deserialize JSON string back to data
-- `hex_to_bytes(hex_data)` - Convert hex string to bytes
-- `bytes_to_hex(data)` - Convert bytes to hex string
+- `serialize_function(func)` - Serialize Python function to string *(Status: Stable)*
+- `deserialize_function_for_PC(string_func)` - Deserialize string back to function *(Status: Stable)*
+- `serialize_data(data)` - Serialize data to JSON string *(Status: Planning)*
+- `deserialize_data(json_data)` - Deserialize JSON string back to data *(Status: Planning)*
+- `hex_to_bytes(hex_data)` - Convert hex string to bytes  *(Status: Available, Unused)*
+- `bytes_to_hex(data)` - Convert bytes to hex string  *(Status: Available, Unused)*
 
 ## Usage
 
 ```python
 from common.protocol import Message, MessageType, create_job_submission_message
-from common.serializer import serialize_function, deserialize_function
+from common.serializer import serialize_function, deserialize_function_for_PC
 
 # Serialize a function
 def my_function(x):
@@ -64,18 +64,17 @@ message = create_job_submission_message(func_code, [1, 2, 3], "job-123")
 json_data = message.to_json()
 
 # Deserialize function
-restored_func = deserialize_function(func_code)
+restored_func = deserialize_function_for_PC(func_code)
 ```
 
 ## Dependencies
 
-- `cloudpickle` - For function serialization
+- `inspect` - For function serialization
 - `json` - For data serialization
 
 ## Design Principles
 
 1. **JSON Compatibility** - All messages are JSON-serializable for WebSocket transmission
-2. **Function Serialization** - Uses cloudpickle for robust function serialization
-3. **Hex Encoding** - Binary data is hex-encoded for JSON compatibility
-4. **Type Safety** - Uses Python type hints for better code clarity
-5. **Extensibility** - Easy to add new message types and serialization methods
+2. **Function Serialization** - Uses inspect to convert function to string 
+3. **Type Safety** - Uses Python type hints for better code clarity
+4. **Extensibility** - Easy to add new message types and serialization methods

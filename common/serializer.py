@@ -26,7 +26,7 @@ def serialize_function(func: str):
         raise ValueError(f"Failed to serialize function ({_env_info()}): {e}")
 
  
-def deserialize_function(func_code: str):
+def deserialize_function_for_PC(func_code: str):
     """Turn function source code string into a callable function"""
     
     # Create a local namespace for the exec
