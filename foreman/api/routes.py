@@ -2,10 +2,13 @@
 from fastapi import  Depends, HTTPException, APIRouter
 from fastapi.responses import HTMLResponse
 from sqlalchemy.ext.asyncio import AsyncSession
-from foreman.db.database import (
-    get_db, get_jobs, get_job, get_workers, get_job_stats,
-    JobResponse, WorkerResponse, JobStats,
-    get_worker_failures, get_worker_failure_stats, WorkerFailureResponse, WorkerFailureStats
+from foreman.db.base import get_db
+from foreman.db.crud import (
+    get_jobs, get_job, get_workers, get_job_stats,
+    get_worker_failures, get_worker_failure_stats
+)
+from foreman.schema.schema import ( 
+    JobResponse, WorkerResponse, JobStats, WorkerFailureResponse, WorkerFailureStats
 )
 
 

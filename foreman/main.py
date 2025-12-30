@@ -1,12 +1,8 @@
-"""
-FastAPI Foreman Server for CrowdCompute
-"""
-
 import websockets
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from .db.database import init_db
+from .db.base import init_db
 from .core.websocket_manager import WebSocketManager
 import api
 
@@ -78,8 +74,6 @@ app.add_middleware(
 # Include the routes
 app.include_router(api.routes.router)
 app.include_router(api.websockets.router)
-
-
 
 
 if __name__ == "__main__":
