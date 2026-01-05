@@ -1,6 +1,7 @@
 import json
-from ....db.base import db_session
-from ....db.crud import * 
+from ...db.base import db_session
+from ...db.crud import *
+from ...db.models import TaskModel 
 
 async def _record_worker_failure(worker_id, task_id, error, job_id):
     async with db_session() as session:
@@ -100,3 +101,23 @@ async def _increment_job_completed_tasks(job_id: str):
     
     async with db_session() as session:
         await increment_job_completed_tasks(session, job_id)
+
+async def _get_worker_stats(worker_id: str):
+    """Get worker statistics from database"""
+    from ...db.models import WorkerModel
+    from sqlalchemy import select
+    
+    async with db_session() as session:
+        result = await session.execute(
+            select(WorkerModel).where(WorkerModel.id == worker_id)
+        )
+        worker = result.scalar_one_or_none()
+        
+        if worker:
+            return {
+                'status': worker.status,
+                'tasks_completed': worker.total_tasks_completed or 0,
+                'tasks_failed': worker.total_tasks_failed or 0,
+                'current_task_id': worker.current_task_id
+            }
+        return None

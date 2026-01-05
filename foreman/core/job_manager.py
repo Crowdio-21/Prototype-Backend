@@ -5,7 +5,9 @@ Job lifecycle management and state tracking
 import json
 from typing import List, Optional, Dict, Any, Tuple
 
-from .ws_manager_utils import (
+from foreman.core.utils.utils import _record_worker_failure
+
+from .utils import (
     _create_job_in_database, _create_tasks_for_job,
     _get_job_by_id, _get_job_tasks, _increment_job_completed_tasks,
     _update_job_status, _update_task_status

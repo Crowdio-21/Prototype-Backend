@@ -1,4 +1,6 @@
-from ...db import (
+# These functions are defined in utils.py, not in db module
+# Import them from the current module
+from .utils import (
     _record_worker_failure,
     _get_job_tasks,
     _get_pending_tasks,
@@ -11,6 +13,7 @@ from ...db import (
     _update_worker_status,
     _update_worker_task_stats,
     _increment_job_completed_tasks,
+    _get_worker_stats,
 )
 
 __all__ = [
@@ -26,4 +29,5 @@ __all__ = [
     "_update_worker_status",
     "_update_worker_task_stats",
     "_increment_job_completed_tasks",
+    "_get_worker_stats",
 ]

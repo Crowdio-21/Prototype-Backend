@@ -6,7 +6,7 @@ import json
 from typing import List, Optional, Any, Dict
 
 from .scheduling import TaskScheduler, Task as SchedulerTask, Worker
-from .ws_manager_utils import (
+from .utils import (
     _get_pending_tasks, _update_task_status, _update_worker_status
 )
 from common.protocol import create_assign_task_message
@@ -239,7 +239,7 @@ class TaskDispatcher:
         workers = {}
         
         # Import here to avoid circular dependency
-        from .ws_manager_utils import _get_worker_stats
+        from .utils import _get_worker_stats
         
         for worker_id in all_worker_ids:
             try:

@@ -13,7 +13,7 @@ from .task_dispatcher import TaskDispatcher
 from .message_handlers import ClientMessageHandler, WorkerMessageHandler
 from .completion_handler import JobCompletionHandler
 from .scheduling import TaskScheduler, create_scheduler
-from .ws_manager_utils import _update_worker_status
+from .utils import _update_worker_status
 from common.protocol import Message, MessageType, create_ping_message
 
 
