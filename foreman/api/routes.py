@@ -21,10 +21,12 @@ router = APIRouter(
 async def dashboard():
     """Dashboard page"""
     # Read the content of the HTML file
-    with open("temp_dashboard.html", "r") as f:
+    import os
+    dashboard_path = os.path.join(os.path.dirname(__file__), "temp_dashboard.html")
+    with open(dashboard_path, "r") as f:
         html_content = f.read()
 
-    # Return the Tempory Dashboard
+    # Return the Temporary Dashboard
     return html_content
 
 

@@ -3,8 +3,8 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .db.base import init_db
-from .core.websocket_manager import WebSocketManager
-import api
+from .core.ws_manager import WebSocketManager
+from . import api
 
 
 # Global WebSocket manager
@@ -21,6 +21,9 @@ async def lifespan(app: FastAPI):
     # Initialize WebSocket manager
     global ws_manager
     ws_manager = WebSocketManager()
+    
+    # Set ws_manager in api.websockets module
+    api.websockets.set_ws_manager(ws_manager)
     
     # Start WebSocket server in background task
     async def start_websocket_server():

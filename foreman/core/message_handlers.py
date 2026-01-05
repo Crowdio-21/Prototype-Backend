@@ -4,7 +4,7 @@ Message handling logic separated by client type
 
 from websockets.server import WebSocketServerProtocol
 
-from .ws_manager_utils import (
+from .utils import (
     _create_worker_in_database, _record_worker_failure,
     _update_worker_status, _update_worker_task_stats
 )

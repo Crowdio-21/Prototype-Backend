@@ -1,10 +1,20 @@
 
 import asyncio
 from fastapi import  WebSocket, WebSocketDisconnect, APIRouter
-from foreman.core.websocket_manager import WebSocketManager
+from foreman.core.ws_manager import WebSocketManager
+from typing import Optional
 
-# Global WebSocket manager
-ws_manager: WebSocketManager = None
+# Global WebSocket manager - will be set by main.py
+_ws_manager: Optional[WebSocketManager] = None
+
+def set_ws_manager(manager: WebSocketManager):
+    """Set the WebSocket manager instance"""
+    global _ws_manager
+    _ws_manager = manager
+
+def get_ws_manager() -> Optional[WebSocketManager]:
+    """Get the WebSocket manager instance"""
+    return _ws_manager
 
 
 # Create an APIRouter instance
@@ -16,6 +26,7 @@ router = APIRouter(
 @router.get("/api/websocket-stats")
 async def get_websocket_stats():
     """Get WebSocket manager statistics"""
+    ws_manager = get_ws_manager()
     if ws_manager:
         return ws_manager.get_stats()
     return {"error": "WebSocket manager not available"}
@@ -29,6 +40,7 @@ async def websocket_endpoint(websocket: WebSocket):
     try:
         while True:
             # Send periodic updates
+            ws_manager = get_ws_manager()
             if ws_manager:
                 stats = ws_manager.get_stats()
                 await websocket.send_text(f"data: {stats}")

@@ -5,12 +5,11 @@ Job lifecycle management and state tracking
 import json
 from typing import List, Optional, Dict, Any, Tuple
 
-from foreman.core.utils.utils import _record_worker_failure
 
 from .utils import (
     _create_job_in_database, _create_tasks_for_job,
     _get_job_by_id, _get_job_tasks, _increment_job_completed_tasks,
-    _update_job_status, _update_task_status
+    _update_job_status, _update_task_status, _record_worker_failure
 )
 
 
@@ -165,6 +164,13 @@ class JobManager:
             error: Error message
         """
         print(f"JobManager: Marking task {task_id} as failed: {error}")
+        
+        await _record_worker_failure(
+            worker_id,
+            task_id,
+            error,
+            job_id
+        )
         
         # Update task status back to pending for retry
         # Set worker_id to None so it can be reassigned
