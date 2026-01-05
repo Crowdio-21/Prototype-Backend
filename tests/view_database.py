@@ -16,8 +16,9 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 def view_database():
     """View database contents"""
     try:
-        # Connect to SQLite database
-        db_path = os.path.join(os.path.dirname(__file__),  'crowdcompute.db')
+        # Connect to SQLite database (database is in project root, not tests directory)
+        project_root = os.path.dirname(os.path.dirname(__file__))
+        db_path = os.path.join(project_root, 'crowdcompute.db')
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         
@@ -81,6 +82,24 @@ def view_database():
                 print("  No workers found")
         except sqlite3.OperationalError:
             print("  Table 'workers' does not exist")
+        print()
+        
+        # View worker_failures table
+        print("⚠️  WORKER_FAILURES TABLE:")
+        print("-" * 30)
+        try:
+            cursor.execute("SELECT * FROM worker_failures")
+            failures = cursor.fetchall()
+            if failures:
+                print(f"Total failures: {len(failures)}")
+                for failure in failures[:10]:  # Show first 10
+                    print(f"  Worker: {failure[1]}, Task: {failure[2]}, Error: {failure[3][:50]}...")
+                if len(failures) > 10:
+                    print(f"  ... and {len(failures) - 10} more failures")
+            else:
+                print("  No failures found")
+        except sqlite3.OperationalError:
+            print("  Table 'worker_failures' does not exist")
         print()
         
         # Show table schemas

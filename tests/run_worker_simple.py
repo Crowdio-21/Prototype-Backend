@@ -71,7 +71,7 @@ def main():
         uvicorn.run(
             worker.app,
             host="0.0.0.0",
-            port=8002,
+            port=8003,
             log_level="info"
         )
     except KeyboardInterrupt:
