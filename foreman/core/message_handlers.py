@@ -9,7 +9,8 @@ from .utils import (
     _update_worker_status, _update_worker_task_stats
 )
 from common.protocol import Message, MessageType, create_job_accepted_message
-from common.serializer import get_runtime_info
+from common.serializer import get_runtime_info, bytes_to_hex, hex_to_bytes
+from .staged_results_manager.checkpoint_manager import CheckpointManager
 
 
 class ClientMessageHandler:
@@ -121,7 +122,8 @@ class WorkerMessageHandler:
         connection_manager, 
         job_manager, 
         task_dispatcher,
-        completion_handler
+        completion_handler,
+        checkpoint_manager: CheckpointManager = None
     ):
         """
         Initialize worker message handler
@@ -131,11 +133,13 @@ class WorkerMessageHandler:
             job_manager: JobManager instance
             task_dispatcher: TaskDispatcher instance
             completion_handler: JobCompletionHandler instance
+            checkpoint_manager: CheckpointManager instance for checkpoint handling
         """
         self.connection_manager = connection_manager
         self.job_manager = job_manager
         self.task_dispatcher = task_dispatcher
         self.completion_handler = completion_handler
+        self.checkpoint_manager = checkpoint_manager or CheckpointManager()
     
     async def handle_message(self, message: Message, websocket: WebSocketServerProtocol):
         """
@@ -153,6 +157,8 @@ class WorkerMessageHandler:
             await self._handle_task_error(message, websocket)
         elif message.type == MessageType.PONG:
             await self._handle_pong(message, websocket)
+        elif message.type == MessageType.TASK_CHECKPOINT:
+            await self._handle_task_checkpoint(message, websocket)
         else:
             print(f"WorkerMessageHandler: Unknown message type: {message.type}")
     
@@ -307,5 +313,67 @@ class WorkerMessageHandler:
             print(f"WorkerMessageHandler: Missing required field in task error: {e}")
         except Exception as e:
             print(f"WorkerMessageHandler: Error handling task error: {e}")
+            import traceback
+            traceback.print_exc()
+    
+    async def _handle_task_checkpoint(self, message: Message, websocket: WebSocketServerProtocol):
+        """
+        Handle checkpoint message from worker (incremental state save)
+        
+        Args:
+            message: Task checkpoint message
+            websocket: Worker websocket connection
+        """
+        try:
+            job_id = message.job_id
+            task_id = message.data["task_id"]
+            is_base = message.data["is_base"]
+            delta_data_hex = message.data["delta_data_hex"]
+            progress_percent = message.data["progress_percent"]
+            checkpoint_id = message.data["checkpoint_id"]
+            compression_type = message.data.get("compression_type", "gzip")
+            
+            # Find worker ID
+            worker_id = self.connection_manager.find_worker_by_websocket(websocket)
+            
+            if not worker_id:
+                print(f"WorkerMessageHandler: Could not find worker for checkpoint")
+                return
+            
+            # Convert hex back to bytes
+            checkpoint_data_bytes = hex_to_bytes(delta_data_hex)
+            
+            print(f"WorkerMessageHandler: Received checkpoint {checkpoint_id} from worker {worker_id} "
+                  f"for task {task_id} (size: {len(checkpoint_data_bytes)} bytes, "
+                  f"progress: {progress_percent}%)")
+            
+            # Get database session and store checkpoint
+            from foreman.db.base import get_db_session
+            async with get_db_session() as session:
+                success = await self.checkpoint_manager.store_checkpoint(
+                    session=session,
+                    task_id=task_id,
+                    job_id=job_id,
+                    is_base=is_base,
+                    delta_data_bytes=checkpoint_data_bytes,
+                    progress_percent=progress_percent,
+                    checkpoint_id=checkpoint_id,
+                    compression_type=compression_type
+                )
+            
+            if success:
+                print(f"WorkerMessageHandler: Checkpoint {checkpoint_id} stored for task {task_id}")
+                
+                # Send acknowledgment to worker
+                from common.protocol import create_checkpoint_ack_message
+                ack_msg = create_checkpoint_ack_message(task_id, job_id, checkpoint_id)
+                await websocket.send(ack_msg.to_json())
+            else:
+                print(f"WorkerMessageHandler: Failed to store checkpoint {checkpoint_id} for task {task_id}")
+        
+        except KeyError as e:
+            print(f"WorkerMessageHandler: Missing required field in checkpoint message: {e}")
+        except Exception as e:
+            print(f"WorkerMessageHandler: Error handling checkpoint: {e}")
             import traceback
             traceback.print_exc()
