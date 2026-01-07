@@ -48,6 +48,12 @@ coverage.xml
 *.cover
 *.py.cover
 .hypothesis/
+
+# Database files
+crowdcompute.db
+*.db
+*.sqlite
+*.sqlite3
 .pytest_cache/
 cover/
 
