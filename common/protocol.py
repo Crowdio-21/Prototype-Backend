@@ -17,6 +17,7 @@ class MessageType(Enum):
     # Foreman -> Worker
     ASSIGN_TASK = "assign_task"
     PING = "ping"
+    RESUME_TASK = "resume_task"
     
     # Worker -> Foreman
     TASK_RESULT = "task_result"
@@ -24,11 +25,15 @@ class MessageType(Enum):
     WORKER_READY = "worker_ready"
     WORKER_HEARTBEAT = "worker_heartbeat"
     PONG = "pong"
+    TASK_CHECKPOINT = "task_checkpoint"
     
     # Foreman -> Client
     JOB_RESULTS = "job_results"
     JOB_ERROR = "job_error"
     JOB_ACCEPTED = "job_accepted"
+    
+    # Checkpoint Acks
+    CHECKPOINT_ACK = "checkpoint_ack"
 
 
 class Message:
@@ -152,3 +157,81 @@ def create_pong_message() -> Message:
         msg_type=MessageType.PONG,
         data={}
     )
+
+
+def create_task_checkpoint_message(
+    task_id: str, 
+    job_id: str, 
+    is_base: bool, 
+    delta_data_hex: str, 
+    progress_percent: float, 
+    checkpoint_id: int,
+    compression_type: str = "gzip"
+) -> Message:
+    """Create a task checkpoint message from worker to foreman
+    
+    Args:
+        task_id: Task identifier
+        job_id: Job identifier
+        is_base: True if this is the base checkpoint, False if delta
+        delta_data_hex: Hex-encoded checkpoint data (compressed)
+        progress_percent: Task progress as percentage (0-100)
+        checkpoint_id: Sequential checkpoint number
+        compression_type: Type of compression applied (gzip, zstd, etc)
+    """
+    return Message(
+        msg_type=MessageType.TASK_CHECKPOINT,
+        data={
+            "task_id": task_id,
+            "is_base": is_base,
+            "delta_data_hex": delta_data_hex,
+            "progress_percent": progress_percent,
+            "checkpoint_id": checkpoint_id,
+            "compression_type": compression_type
+        },
+        job_id=job_id
+    )
+
+
+def create_checkpoint_ack_message(task_id: str, job_id: str, checkpoint_id: int) -> Message:
+    """Create a checkpoint acknowledgment message from foreman to worker"""
+    return Message(
+        msg_type=MessageType.CHECKPOINT_ACK,
+        data={
+            "task_id": task_id,
+            "checkpoint_id": checkpoint_id
+        },
+        job_id=job_id
+    )
+
+
+def create_resume_task_message(
+    task_id: str, 
+    job_id: str, 
+    func_code: str,
+    reconstructed_state_hex: str,
+    remaining_args: List[Any],
+    checkpoint_count: int
+) -> Message:
+    """Create a task resumption message from foreman to worker
+    
+    Args:
+        task_id: Task identifier
+        job_id: Job identifier
+        func_code: Updated function code if needed
+        reconstructed_state_hex: Hex-encoded reconstructed state
+        remaining_args: Arguments not yet processed
+        checkpoint_count: Total checkpoints available for this task
+    """
+    return Message(
+        msg_type=MessageType.RESUME_TASK,
+        data={
+            "task_id": task_id,
+            "func_code": func_code,
+            "reconstructed_state_hex": reconstructed_state_hex,
+            "remaining_args": remaining_args,
+            "checkpoint_count": checkpoint_count
+        },
+        job_id=job_id
+    )
+
