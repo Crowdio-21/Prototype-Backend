@@ -263,13 +263,13 @@ class JobManager:
         
         return results
     
-    async def finalize_job(self, job_id: str, completed_tasks: int) -> None:
+async def finalize_job(self, job_id: str, completed_tasks: int = None) -> None:
         """
         Mark job as completed and clean up
-        
+
         Args:
             job_id: Job identifier
-            completed_tasks: Number of completed tasks
+            completed_tasks: Number of completed tasks (optional, only set if provided)
         """
         print(f"JobManager: Finalizing job {job_id}")
         

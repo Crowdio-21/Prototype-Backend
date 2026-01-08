@@ -41,9 +41,8 @@ class JobCompletionHandler:
         message = create_job_results_message(results, job_id)
         await client_websocket.send(message.to_json())
         
-        # Finalize job
-        completed_tasks = len([t for t in tasks if t.status == "completed"])
-        await self.job_manager.finalize_job(job_id, completed_tasks)
+        # Finalize job (completed_tasks already tracked via increment_job_completed_tasks)
+        await self.job_manager.finalize_job(job_id)
         
         print(f"Job {job_id} completed successfully")
         
