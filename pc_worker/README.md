@@ -1,22 +1,43 @@
-# Worker FastAPI Package
+# PC Worker Package
 
-The `worker` package implements the worker nodes that execute distributed computing tasks for the CrowdCompute system.
+A modular FastAPI-based worker service for the CrowdCompute distributed computing system.
 
 ## Overview
 
 This package provides FastAPI-based worker servers that connect to the foreman, receive task assignments, execute Python functions, and return results. Workers can run on any device with Python support.
 
+## Project Structure
+
+```
+pc_worker/
+├── __init__.py              # Package initialization
+├── config.py                # Configuration models
+├── main.py                  # Main entry point
+├── README.md                # This file
+├── core/                    # Core worker functionality
+│   ├── __init__.py
+│   ├── app.py              # FastAPI application factory
+│   └── worker.py           # Worker implementation
+├── api/                     # API routes and endpoints
+│   ├── __init__.py
+│   ├── routes.py           # REST API routes
+│   └── dashboard.py        # Web dashboard
+└── schema/                  # Data models and schemas
+    ├── __init__.py
+    └── models.py           # Pydantic models
+```
+
 ## Modules
 
-### `worker.py`
-Main worker implementation with FastAPI server and task execution engine.
+### Core (`core/`)
+
+#### `worker.py`
+Main worker implementation with task execution engine.
 
 **Key Classes:**
-- `WorkerConfig` - Worker configuration settings
 - `FastAPIWorker` - Main worker class with FastAPI integration
 
 **Key Features:**
-- FastAPI server for monitoring and control
 - WebSocket client for foreman communication
 - Task execution engine with error handling
 - Statistics tracking and monitoring
@@ -31,7 +52,21 @@ Main worker implementation with FastAPI server and task execution engine.
 - `listen_for_tasks()` - Listen for task assignments
 - `heartbeat()` - Send periodic heartbeats
 
-### `dashboard.py`
+#### `app.py`
+FastAPI application factory for creating and configuring the web server.
+
+### API (`api/`)
+
+#### `routes.py`
+REST API endpoints for worker monitoring and control.
+
+**Endpoints:**
+- `GET /` - Worker status
+- `GET /stats` - Worker statistics
+- `POST /restart` - Restart worker connection
+- `WS /ws` - WebSocket for real-time updates
+
+#### `dashboard.py`
 HTML dashboard for worker monitoring and control.
 
 **Features:**
@@ -41,44 +76,78 @@ HTML dashboard for worker monitoring and control.
 - Performance metrics
 - WebSocket-based live updates
 
+### Schema (`schema/`)
+
+#### `models.py`
+Pydantic models for data validation and serialization.
+
+**Models:**
+- `TaskResult` - Task execution result
+
+### Configuration (`config.py`)
+
+**Models:**
+- `WorkerConfig` - Worker runtime configuration
+
 ## Usage
 
-### Starting a Worker
+### Quick Start
 
-```python
-# Using the provided script
-python tests/run_worker_simple.py
+Run a worker using the main entry point:
 
-# Or programmatically
-from worker.worker import FastAPIWorker, WorkerConfig
-import asyncio
+```bash
+# With auto-generated worker ID
+python -m pc_worker.main --foreman-url ws://localhost:9000 --api-port 8001
 
-async def start_worker():
-    config = WorkerConfig(
-        worker_id="worker-001",
-        foreman_url="ws://localhost:9000",
-        max_concurrent_tasks=1,
-        auto_restart=True,
-        heartbeat_interval=30
-    )
-    
-    worker = FastAPIWorker(config)
-    await worker.start()
+# With custom worker ID
+python -m pc_worker.main --worker-id my-worker-01 --api-port 8001
 
-asyncio.run(start_worker())
+# View all options
+python -m pc_worker.main --help
 ```
 
-### Worker Configuration
+### Using the Test Script
+
+```bash
+# Run a simple worker
+python tests/run_worker_simple.py
+
+# Run on a specific port
+python tests/run_worker_simple.py -p 8002
+```
+
+### Programmatic Usage
 
 ```python
-from worker.worker import WorkerConfig
+from pc_worker import FastAPIWorker, WorkerConfig
 
 config = WorkerConfig(
-    worker_id="unique-worker-id",      # Unique identifier
-    foreman_url="ws://192.168.1.100:9000",  # Foreman WebSocket URL
-    max_concurrent_tasks=2,            # Max concurrent tasks
-    auto_restart=True,                 # Auto-restart on failure
-    heartbeat_interval=30              # Heartbeat frequency (seconds)
+    worker_id="worker-001",
+    foreman_url="ws://localhost:9000",
+    max_concurrent_tasks=1,
+    auto_restart=True,
+    heartbeat_interval=30,
+    api_host="0.0.0.0",
+    api_port=8001
+)
+
+worker = FastAPIWorker(config)
+worker.run()  # Starts FastAPI server with worker
+```
+
+### Worker Configuration Options
+
+```python
+from pc_worker import WorkerConfig
+
+config = WorkerConfig(
+    worker_id="unique-worker-id",              # Unique identifier
+    foreman_url="ws://192.168.1.100:9000",    # Foreman WebSocket URL
+    max_concurrent_tasks=2,                    # Max concurrent tasks
+    auto_restart=True,                         # Auto-restart on failure
+    heartbeat_interval=30,                     # Heartbeat frequency (seconds)
+    api_host="0.0.0.0",                       # API server host
+    api_port=8001                              # API server port
 )
 ```
 
@@ -104,6 +173,13 @@ print(f"Total execution time: {stats['stats']['total_execution_time']}")
 # Restart worker
 response = requests.post("http://localhost:8001/restart")
 print("Worker restarted")
+```
+
+### Dashboard Access
+
+Open your browser to view the real-time dashboard:
+```
+http://localhost:8001/dashboard
 ```
 
 ## Features
@@ -156,17 +232,17 @@ task_message = {
     "type": "assign_task",
     "data": {
         "func_code": "serialized_function_hex",
-        "args_list": [1, 2, 3],
+        "task_args": [1, 2, 3],
         "task_id": "task-123"
     },
     "job_id": "job-456"
 }
 
 # 2. Deserialize function
-func = deserialize_function(func_code)
+func = deserialize_function_for_PC(func_code)
 
 # 3. Execute function
-result = func(*args_list)
+result = func(*task_args)
 
 # 4. Send result
 result_message = {
@@ -186,19 +262,12 @@ result_message = {
 - **Foreman URL** - WebSocket URL of the foreman
 - **Max Concurrent Tasks** - Maximum tasks to execute simultaneously
 - **Auto Restart** - Automatically restart on failure
-- **Heartbeat Interval** - Frequency of heartbeat messages
+- **Heartbeat Interval** - Frequency of heartbeat messages (seconds)
 
 ### Network Settings
-- **WebSocket Port** - Port for foreman communication (9000)
-- **HTTP Port** - Port for monitoring API (8001)
-- **Connection Timeout** - Timeout for WebSocket connections
-- **Retry Interval** - Interval between reconnection attempts
-
-### Execution Settings
-- **Task Timeout** - Maximum time for task execution
-- **Memory Limit** - Memory usage limit for tasks
-- **CPU Limit** - CPU usage limit for tasks
-- **Sandbox Mode** - Execute tasks in restricted environment
+- **API Host** - Host for the FastAPI server (default: 0.0.0.0)
+- **API Port** - Port for monitoring API (default: 8001)
+- **Foreman URL** - WebSocket URL of foreman (default: ws://localhost:9000)
 
 ## Monitoring
 
@@ -207,56 +276,51 @@ result_message = {
 - **Task Statistics** - Completed and failed tasks
 - **Performance Metrics** - Execution time and throughput
 - **Connection Status** - Foreman connection status
-- **Resource Usage** - CPU and memory usage
+- **Control Actions** - Restart and disconnect controls
 
 ### API Endpoints
 - `GET /` - Worker status and configuration
 - `GET /stats` - Detailed statistics
 - `POST /restart` - Restart worker connection
-- `WebSocket /ws` - Real-time status updates
+- `GET /dashboard` - Web dashboard
+- `WS /ws` - Real-time status updates via WebSocket
 
-## Best Practices
+### API Documentation
+FastAPI automatically generates interactive documentation:
+- Swagger UI: `http://localhost:8001/docs`
+- ReDoc: `http://localhost:8001/redoc`
 
-### Security
-1. **Sandbox Execution** - Execute tasks in restricted environment
-2. **Resource Limits** - Set appropriate resource limits
-3. **Network Security** - Use secure WebSocket connections
-4. **Access Control** - Restrict API access if needed
+## Development
 
-### Performance
-1. **Concurrent Tasks** - Adjust based on system capabilities
-2. **Memory Management** - Monitor memory usage
-3. **Network Optimization** - Optimize for network conditions
-4. **Error Recovery** - Implement robust error handling
+### Running Tests
 
-### Monitoring
-1. **Health Checks** - Regular health check monitoring
-2. **Logging** - Comprehensive logging for debugging
-3. **Metrics Collection** - Collect performance metrics
-4. **Alerting** - Set up alerts for critical issues
-
-## Deployment
-
-### Local Development
 ```bash
-# Start worker locally
-python tests/run_worker_simple.py
+# Run foreman
+python tests/run_foreman_simple.py
+
+# Run worker
+python tests/run_worker_simple.py -p 8001
+
+# Run example client
+python tests/example_client.py localhost
 ```
 
-### Production Deployment
-```bash
-# Using uvicorn
-uvicorn worker.worker:app --host 0.0.0.0 --port 8001
+### Project Guidelines
 
-# Using gunicorn
-gunicorn worker.worker:app -w 1 -k uvicorn.workers.UvicornWorker
-```
+- **Modularity** - Keep components separated by responsibility
+- **Type Safety** - Use Pydantic models for data validation
+- **Error Handling** - Handle all exceptions gracefully
+- **Logging** - Use clear, informative log messages
+- **Documentation** - Document all public APIs
 
-### Docker Deployment
-```dockerfile
-FROM python:3.9-slim
-COPY . /app
-WORKDIR /app
-RUN pip install -r requirements.txt
-CMD ["python", "tests/run_worker_simple.py"]
-```
+## Dependencies
+
+- `fastapi` - Web framework
+- `uvicorn` - ASGI server
+- `websockets` - WebSocket client
+- `pydantic` - Data validation
+- `cloudpickle` - Function serialization (via common module)
+
+## License
+
+Part of the CrowdCompute distributed computing system.

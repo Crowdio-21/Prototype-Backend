@@ -332,7 +332,7 @@ def create_dashboard_html(worker_id: str) -> str:
 
 def add_dashboard_route(app: FastAPI, worker_id: str):
     """Add dashboard route to FastAPI app"""
-    
+
     @app.get("/dashboard", response_class=HTMLResponse)
     async def dashboard():
         """Worker dashboard page"""
