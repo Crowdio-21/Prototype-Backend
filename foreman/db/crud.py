@@ -340,6 +340,9 @@ async def get_pending_tasks(
     query = select(TaskModel).where(TaskModel.status == "pending")
     if job_id:
         query = query.where(TaskModel.job_id == job_id)
+    
+    # Order by task ID to ensure sequential processing
+    query = query.order_by(TaskModel.id)
 
     result = await session.execute(query)
     return result.scalars().all()
