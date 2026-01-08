@@ -14,6 +14,8 @@ from .utils import (
     _update_worker_task_stats,
     _increment_job_completed_tasks,
     _get_worker_stats,
+    _complete_task_if_assigned,
+    _claim_task_for_worker
 )
 
 __all__ = [
@@ -30,4 +32,6 @@ __all__ = [
     "_update_worker_task_stats",
     "_increment_job_completed_tasks",
     "_get_worker_stats",
+    "_complete_task_if_assigned",
+    "_claim_task_for_worker",
 ]
