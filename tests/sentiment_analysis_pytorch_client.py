@@ -20,9 +20,6 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from developer_sdk import connect, map as distributed_map, disconnect
 
 
-# =========================================================
-# 🔥 WORKER FUNCTION (PYTORCH – FIXED & STABLE)
-# =========================================================
 def sentiment_worker_pytorch(text):
     """
     PyTorch-based sentiment analysis worker
@@ -129,7 +126,7 @@ def split_text_into_sentences(text):
 
 
 # =========================================================
-# 📊 RESULT AGGREGATION
+#  RESULT AGGREGATION
 # =========================================================
 def aggregate_sentiment_results(results):
     parsed = []
@@ -184,7 +181,7 @@ def aggregate_sentiment_results(results):
 
 
 # =========================================================
-# 🌐 DISTRIBUTED EXECUTION
+#  DISTRIBUTED EXECUTION
 # =========================================================
 async def run_distributed_sentiment_analysis(text, foreman_host="localhost"):
     print("\n" + "=" * 70)
@@ -223,7 +220,7 @@ async def run_distributed_sentiment_analysis(text, foreman_host="localhost"):
 
 
 # =========================================================
-# 🚀 MAIN
+#  MAIN
 # =========================================================
 async def main():
     example_text = """
