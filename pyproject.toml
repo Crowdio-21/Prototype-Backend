@@ -1,0 +1,16 @@
+[project]
+name = "prototype-backend"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "aiosqlite==0.19.0",
+    "asyncio-mqtt==0.16.1",
+    "cloudpickle==3.0.0",
+    "fastapi==0.104.1",
+    "pydantic==2.5.0",
+    "sqlalchemy==2.0.23",
+    "uvicorn==0.24.0",
+    "websockets==12.0",
+]
